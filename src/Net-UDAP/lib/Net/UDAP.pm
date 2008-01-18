@@ -86,7 +86,7 @@ use Data::Dumper;
     sub add_client {
         my $msg = shift;
         if ( !$msg ) {
-            carp "msg not defined in add_client";
+            carp 'msg not defined in add_client';
             return;
         }
         my $mac = decode_mac( $msg->{dst_mac} );
@@ -97,17 +97,18 @@ use Data::Dumper;
             return 1;
         }
         else {
-            carp "MAC address not valid in add_client" return 0;
+            carp 'MAC address not valid in add_client';
+            return;
         }
     }
 
-    sub readUDP {
+    sub read_UDP {
         my $sock = shift;
 
-        warn "readUDP triggered";
+        warn 'read_UDP triggered';
 
         my $clientpaddr;
-        my $rawmsg = '';
+        my $rawmsg = q{};
 
         my $packet_received = 0;
 
@@ -123,7 +124,7 @@ use Data::Dumper;
                 # Will need to tweak this code when the clients start
                 # sending packets with non-zero IP address
                 if ( $src_ip ne IP_ZERO ) {
-                    warn "Ignoring packet with non-zero IP address";
+                    warn 'Ignoring packet with non-zero IP address';
                     last WHILE;
                 }
 
@@ -135,7 +136,7 @@ use Data::Dumper;
 
             SWITCH: {
                     ( !defined $method ) && do {
-                        warn "msg method not set";
+                        warn 'msg method not set';
                         last SWITCH;
                     };
                     ( $method eq UCP_METHOD_DISCOVER ) && do {
@@ -157,6 +158,7 @@ use Data::Dumper;
 
         # reset all data structures
         undef %_devices;
+        return 1;
     }
 
     sub discover {
@@ -170,9 +172,13 @@ use Data::Dumper;
             = Net::UDAP::Message->new( ucp_method => UCP_METHOD_DISCOVER );
 
         # send msg
-        my $destpaddr = sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
-        $sock->send( $msg->packed(), 0, $destpaddr );
-
+        if ($msg) {
+            my $destpaddr = sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
+            if ($destpaddr) {
+                return $sock->send( $msg->packed(), 0, $destpaddr );
+            }
+        }
+        return;
     }
 
     sub devices {
