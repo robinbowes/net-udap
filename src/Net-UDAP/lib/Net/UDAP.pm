@@ -14,13 +14,11 @@ use version; our $VERSION = qv('0.1');
 #  use Perl6::Slurp;
 #  use Perl6::Say;
 
-
 # Module implementation here
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 use IO::Socket::INET;
-use IO::Select;
 
 use Net::UDAP::Constant;
 use Net::UDAP::Util;
@@ -70,12 +68,12 @@ use Data::Dumper;
             Blocking  => 0,
             )
             or do {
-            warn "Can't open socket on ip address: $args{ip_addr}";
+            carp "Can't open socket on ip address: $args{ip_addr}";
             };
 
         # May need to set non-blocking a different way, depending on
         # whether or not the std method works on Windows
-	# This is how SC does it:
+        # This is how SC does it:
         #defined( Slim::Utils::Network::blocking( $_sock, 0 ) ) || do {
         #    logger('')
         #        ->logdie(
@@ -87,11 +85,19 @@ use Data::Dumper;
 
     sub add_client {
         my $msg = shift;
+        if ( !$msg ) {
+            carp "msg not defined in add_client";
+            return;
+        }
         my $mac = decode_mac( $msg->{dst_mac} );
-        if ( !exists $_devices{$mac} ) {
+        if ($mac) {
             $_devices{$mac} = Net::UDAP::Client->new();
             $_devices{$mac}
                 ->set( mac => $msg->{dst_mac}, type => $msg->{device_name} );
+            return 1;
+        }
+        else {
+            carp "MAC address not valid in add_client" return 0;
         }
     }
 
@@ -103,47 +109,48 @@ use Data::Dumper;
         my $clientpaddr;
         my $rawmsg = '';
 
-	my $packet_received = 0;
+        my $packet_received = 0;
 
     WHILE: {
-        while ( $clientpaddr = $sock->recv( $rawmsg, UDP_MAX_MSG_LEN ) ) {
+            while ( $clientpaddr = $sock->recv( $rawmsg, UDP_MAX_MSG_LEN ) ) {
 
-	    $packet_received = 1;
+                $packet_received = 1;
 
-            # get src port and src IP
-            my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
+                # get src port and src IP
+                my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
 
-            # Don't process packets we sent
-            # Will need to tweak this code when the clients start
-            # sending packets with non-zero IP address
-            if ( $src_ip ne IP_ZERO ) {
-                warn "Ignoring packet with non-zero IP address";
-                last WHILE;
-            }
+                # Don't process packets we sent
+                # Will need to tweak this code when the clients start
+                # sending packets with non-zero IP address
+                if ( $src_ip ne IP_ZERO ) {
+                    warn "Ignoring packet with non-zero IP address";
+                    last WHILE;
+                }
 
-            my $msg = Net::UDAP::Message->new();
+                my $msg = Net::UDAP::Message->new();
 
-            # Unpack the msg and extract the UCP Method
-            $msg->udap_decode($rawmsg);
-            my $method = $msg->{ucp_method};
+                # Unpack the msg and extract the UCP Method
+                $msg->udap_decode($rawmsg);
+                my $method = $msg->{ucp_method};
 
-        SWITCH: {
-                ( !defined $method ) && do {
-                    warn "msg method not set";
-                    last SWITCH;
-                };
-                ( $method eq UCP_METHOD_DISCOVER ) && do {
-                    add_client($msg);
-                    last SWITCH;
-                };
+            SWITCH: {
+                    ( !defined $method ) && do {
+                        warn "msg method not set";
+                        last SWITCH;
+                    };
+                    ( $method eq UCP_METHOD_DISCOVER ) && do {
+                        add_client($msg);
+                        last SWITCH;
+                    };
 
-                # default action
-                use Data::Dumper;
-                warn "Unknown message. Here's a dump:\n" . Dumper( \$msg );
+                    # default action
+                    use Data::Dumper;
+                    warn "Unknown message. Here's a dump:\n"
+                        . Dumper( \$msg );
+                }
             }
         }
-	}
-	return $packet_received;
+        return $packet_received;
     }
 
     sub _clear_data {
@@ -159,8 +166,8 @@ use Data::Dumper;
         undef %_devices;
 
         # Create a discovery msg
-        my $msg = Net::UDAP::Message->new(
-            ucp_method => UCP_METHOD_DISCOVER );
+        my $msg
+            = Net::UDAP::Message->new( ucp_method => UCP_METHOD_DISCOVER );
 
         # send msg
         my $destpaddr = sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
@@ -191,7 +198,7 @@ use Data::Dumper;
     }
 }
 
-1; # Magic true value required at end of module
+1;    # Magic true value required at end of module
 __END__
 
 =head1 NAME
@@ -341,3 +348,8 @@ RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A
 FAILURE OF THE SOFTWARE TO OPERATE WITH ANY OTHER SOFTWARE), EVEN IF
 SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGES.
+
+=cut
+
+# vim:set softtabstop=4:
+# vim:set shiftwidth=4:
