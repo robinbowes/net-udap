@@ -1,0 +1,14 @@
+Changes
+MANIFEST
+META.yml # Will be created by "make dist"
+Makefile.PL
+README
+lib/Net/UDAP.pm
+lib/Net/UDAP/Client.pm
+lib/Net/UDAP/Constant.pm
+lib/Net/UDAP/Message.pm
+lib/Net/UDAP/Util.pm
+t/00.load.t
+t/perlcritic.t
+t/pod-coverage.t
+t/pod.t
