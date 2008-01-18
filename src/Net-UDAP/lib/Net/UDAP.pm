@@ -1,10 +1,12 @@
 package Net::UDAP;
 
+# $Id$
+
 use warnings;
 use strict;
 use Carp;
 
-use version; $VERSION = qv('0.0.3');
+use version; our $VERSION = qv('0.1');
 
 # Other recommended modules (uncomment to use):
 #  use IO::Prompt;
@@ -14,7 +16,180 @@ use version; $VERSION = qv('0.0.3');
 
 
 # Module implementation here
+use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
+use base qw(Class::Accessor);
 
+use IO::Socket::INET;
+use IO::Select;
+
+use Net::UDAP::Constant;
+use Net::UDAP::Util;
+use Net::UDAP::Message;
+use Net::UDAP::Client;
+
+use Data::Dumper;
+
+{
+
+    # Encapsulated class data
+
+    # global hash of devices
+    my %_devices;
+
+    # Class methods; these operate on encapsulated class data
+
+    sub new {
+        my ( $caller, %args ) = @_;
+        my $class = ref $caller || $caller;
+        my $self = bless {}, $class;
+
+        # define stuff here
+
+        return $self;
+    }
+
+    sub setup_socket {
+        my (%args) = @_;
+
+        # If no IP address passed, use 0.0.0.0
+        if ( !exists $args{ip_addr} ) {
+            $args{ip_addr} = decode_ip(IP_ZERO);
+        }
+
+        # If no broadcast setting specified, use "broadcast off"
+        if ( !exists $args{broadcast} ) {
+            $args{broadcast} = BROADCAST_OFF;
+        }
+
+        # Setup listening socket on UDAP port
+        my $sock = IO::Socket::INET->new(
+            Proto     => 'udp',
+            LocalPort => PORT_UDAP,
+            LocalAddr => $args{ip_addr},
+            Broadcast => $args{broadcast},
+            Blocking  => 0,
+            )
+            or do {
+            warn "Can't open socket on ip address: $args{ip_addr}";
+            };
+
+        # May need to set non-blocking a different way, depending on
+        # whether or not the std method works on Windows
+	# This is how SC does it:
+        #defined( Slim::Utils::Network::blocking( $_sock, 0 ) ) || do {
+        #    logger('')
+        #        ->logdie(
+        #        "FATAL: Discovery init: Cannot set port nonblocking");
+        #};
+
+        return $sock;
+    }
+
+    sub add_client {
+        my $msg = shift;
+        my $mac = decode_mac( $msg->{dst_mac} );
+        if ( !exists $_devices{$mac} ) {
+            $_devices{$mac} = Net::UDAP::Client->new();
+            $_devices{$mac}
+                ->set( mac => $msg->{dst_mac}, type => $msg->{device_name} );
+        }
+    }
+
+    sub readUDP {
+        my $sock = shift;
+
+        warn "readUDP triggered";
+
+        my $clientpaddr;
+        my $rawmsg = '';
+
+	my $packet_received = 0;
+
+    WHILE: {
+        while ( $clientpaddr = $sock->recv( $rawmsg, UDP_MAX_MSG_LEN ) ) {
+
+	    $packet_received = 1;
+
+            # get src port and src IP
+            my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
+
+            # Don't process packets we sent
+            # Will need to tweak this code when the clients start
+            # sending packets with non-zero IP address
+            if ( $src_ip ne IP_ZERO ) {
+                warn "Ignoring packet with non-zero IP address";
+                last WHILE;
+            }
+
+            my $msg = Net::UDAP::Message->new();
+
+            # Unpack the msg and extract the UCP Method
+            $msg->udap_decode($rawmsg);
+            my $method = $msg->{ucp_method};
+
+        SWITCH: {
+                ( !defined $method ) && do {
+                    warn "msg method not set";
+                    last SWITCH;
+                };
+                ( $method eq UCP_METHOD_DISCOVER ) && do {
+                    add_client($msg);
+                    last SWITCH;
+                };
+
+                # default action
+                use Data::Dumper;
+                warn "Unknown message. Here's a dump:\n" . Dumper( \$msg );
+            }
+        }
+	}
+	return $packet_received;
+    }
+
+    sub _clear_data {
+
+        # reset all data structures
+        undef %_devices;
+    }
+
+    sub discover {
+        my $sock = shift;
+
+        # Empty the device list
+        undef %_devices;
+
+        # Create a discovery msg
+        my $msg = Net::UDAP::Message->new(
+            ucp_method => UCP_METHOD_DISCOVER );
+
+        # send msg
+        my $destpaddr = sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
+        $sock->send( $msg->packed(), 0, $destpaddr );
+
+    }
+
+    sub devices {
+
+        # return the hash of clients
+        return %_devices;
+    }
+
+    sub get_device_list {
+        my @devices = ();
+        foreach my $device ( keys %_devices ) {
+            push @devices, $_devices{$device}->display_name();
+        }
+        return \@devices;
+    }
+
+    sub get_device_hash {
+        my %devices;
+        foreach my $device ( keys %_devices ) {
+            $devices{$device} = $_devices{$device}->display_name();
+        }
+        return \%devices;
+    }
+}
 
 1; # Magic true value required at end of module
 __END__

@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use Carp;
 
-use version; $VERSION = qv('0.0.3');
+use version; our $VERSION = qv('0.1');
 
 # Other recommended modules (uncomment to use):
 #  use IO::Prompt;
@@ -12,9 +12,111 @@ use version; $VERSION = qv('0.0.3');
 #  use Perl6::Slurp;
 #  use Perl6::Say;
 
+use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
+use Exporter qw(import);
 
-# Module implementation here
+%EXPORT_TAGS
+    = ( all => [qw( decode_hex encode_ip decode_ip encode_mac decode_mac )] );
+Exporter::export_tags('all');
 
+{
+
+    sub decode_hex {
+
+        # Decode a hex string of specified length into a human-readable string
+	# $rawstr	- the raw hex string
+	# $strlen	- the length of the hex string
+        # $fmt		- the format to use to unpack each byte
+        # $separator	- the string to use as separator in the output string
+        my ( $rawstr, $strlen, $fmt, $separator ) = @_;
+        $separator = '' if !defined $separator;
+        if ( length($rawstr) == $strlen ) {
+            my @parts = unpack( "($fmt)*", $rawstr );
+            if (wantarray) {
+                return @parts;
+            }
+            else {
+                return join( "$separator", @parts );
+            }
+        }
+        else {
+            carp "Expecting string with length: $strlen";
+            return undef;
+        }
+    }
+
+    sub encode_ip {
+
+        # Encode a dotted-quad IP address into a 4-byte string
+	# $ip		- IP address in format xxx.xxx.xxx.xxx
+        my $ip = shift;
+        if ($ip =~ /
+		    \A		    # start of string
+		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
+		    [.]		    # period literal
+		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
+		    [.]		    # period literal
+		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
+		    [.]		    # period literal
+		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
+		    /xms
+            )
+        {
+            return pack( 'C4', $1, $2, $3, $4 );
+        }
+        else {
+            carp "IP address \"$ip\" not in expected format (x.x.x.x)";
+            return undef;
+        }
+    }
+
+    sub decode_ip {
+
+        # Decode a 4-byte IP string into human-readable form
+	# $rawstr	- 4-byte hex string representing IP address
+        my $rawstr = shift;
+        return decode_hex( $rawstr, 4, 'C', '.' );
+    }
+
+    sub encode_mac {
+
+        # Encode a mac address to a 6-byte string
+	# $mac		- MAC address in format xx:xx:xx:xx:xx:xx
+        my $mac = shift;
+        if ($mac =~ /
+		    \A			# start of string
+		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
+		    :			# semi-colon literal
+		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
+		    :			# semi-colon literal
+		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
+		    :			# semi-colon literal
+		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
+		    :			# semi-colon literal
+		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
+		    :			# semi-colon literal
+		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
+		    /xms
+            )
+        {
+            return pack( 'C6',
+                hex($1), hex($2), hex($3), hex($4), hex($5), hex($6) );
+        }
+        else {
+            carp
+                "MAC address \"$mac\" not in expected format (xx:xx:xx:xx:xx:xx)";
+            return undef;
+        }
+    }
+
+    sub decode_mac {
+
+        # Decode a 6-byte MAC string into human-readable form
+	# $rawstr	- 6-byte hex string representing MAC address
+        my $rawstr = shift;
+        return decode_hex( $rawstr, 6, 'H2', ':' );
+    }
+}
 
 1; # Magic true value required at end of module
 __END__

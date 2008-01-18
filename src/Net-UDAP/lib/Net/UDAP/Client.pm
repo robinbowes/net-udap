@@ -1,10 +1,12 @@
 package Net::UDAP::Client;
 
+# $Id$
+
 use warnings;
 use strict;
 use Carp;
 
-use version; $VERSION = qv('0.0.3');
+use version; our $VERSION = qv('0.1');
 
 # Other recommended modules (uncomment to use):
 #  use IO::Prompt;
@@ -14,7 +16,60 @@ use version; $VERSION = qv('0.0.3');
 
 
 # Module implementation here
+use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
+use base qw(Class::Accessor);
 
+use Net::UDAP::Util;
+
+use Data::Dumper;
+
+{
+
+    # class methods
+    sub new {
+        my ( $caller, %arg ) = @_;
+        my $class = ref $caller || $caller;
+        my $self = bless {}, $class;
+
+        # define stuff here
+        return $self;
+    }
+
+    sub get {
+
+        # show one or more parameters for a client
+    }
+
+    sub set {
+        my ( $self, %args ) = @_;
+
+        # warn "args to set:\n" . Dumper \%args;
+
+        foreach my $key ( keys %args ) {
+            $self->{$key} = $args{$key};
+        }
+
+        # set one or more parameters for a client
+    }
+
+    sub read {
+
+        # read all parameters from a client
+    }
+
+    sub write {
+
+        # write all parameters to a client
+    }
+
+    sub display_name {
+        my ( $self, %args ) = @_;
+        my $dname = $self->{type} . ' ';
+        my @mac   = decode_mac( $self->{mac} );
+        $dname .= $mac[3] . $mac[4] . $mac[5];
+        return $dname;
+    }
+}
 
 1; # Magic true value required at end of module
 __END__
