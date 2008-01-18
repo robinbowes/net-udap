@@ -19,6 +19,7 @@ use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 use IO::Socket::INET;
+use Net::UDAP::Log;
 
 use Net::UDAP::Constant;
 use Net::UDAP::Util;
@@ -41,8 +42,6 @@ use Data::Dumper;
         my $class = ref $caller || $caller;
         my $self = bless {}, $class;
 
-        # define stuff here
-
         return $self;
     }
 
@@ -54,10 +53,14 @@ use Data::Dumper;
             $args{ip_addr} = decode_ip(IP_ZERO);
         }
 
+        log( info => "Using IP address $args{ip_addr}" );
+
         # If no broadcast setting specified, use "broadcast off"
         if ( !exists $args{broadcast} ) {
             $args{broadcast} = BROADCAST_OFF;
         }
+
+        log ( info => "Using broadcast setting: $args{broadcast}" );
 
         # Setup listening socket on UDAP port
         my $sock = IO::Socket::INET->new(
@@ -68,7 +71,7 @@ use Data::Dumper;
             Blocking  => 0,
             )
             or do {
-            carp "Can't open socket on ip address: $args{ip_addr}";
+                log ( error => "Can't open socket on ip address: $args{ip_addr}" );
             };
 
         # May need to set non-blocking a different way, depending on
@@ -86,7 +89,7 @@ use Data::Dumper;
     sub add_client {
         my $msg = shift;
         if ( !$msg ) {
-            carp 'msg not defined in add_client';
+            log( eror => 'msg not defined in add_client' );
             return;
         }
         my $mac = decode_mac( $msg->{dst_mac} );
@@ -97,7 +100,7 @@ use Data::Dumper;
             return 1;
         }
         else {
-            carp 'MAC address not valid in add_client';
+            log( error => 'MAC address not valid in add_client' );
             return;
         }
     }
@@ -105,7 +108,7 @@ use Data::Dumper;
     sub read_UDP {
         my $sock = shift;
 
-        warn 'read_UDP triggered';
+        log ( info => 'read_UDP triggered');
 
         my $clientpaddr;
         my $rawmsg = q{};
@@ -124,7 +127,7 @@ use Data::Dumper;
                 # Will need to tweak this code when the clients start
                 # sending packets with non-zero IP address
                 if ( $src_ip ne IP_ZERO ) {
-                    warn 'Ignoring packet with non-zero IP address';
+                    log ( info => 'Ignoring packet with non-zero IP address' );
                     last WHILE;
                 }
 

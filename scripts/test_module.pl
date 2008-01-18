@@ -51,7 +51,7 @@ Net::UDAP::discover($sock);
 # Read the responses
 # readUDP returns true if it processed a packet
 # We need to repeatedly read packets until none are left
-while ( Net::UDAP::readUDP($sock) ) { }
+while ( Net::UDAP::read_UDP($sock) ) { }
 
 # close the socket
 $sock->close();

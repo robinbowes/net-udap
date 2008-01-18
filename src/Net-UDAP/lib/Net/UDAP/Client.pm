@@ -20,6 +20,7 @@ use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 use Net::UDAP::Util;
+use Net::UDAP::Log;
 
 use Data::Dumper;
 
@@ -41,15 +42,15 @@ use Data::Dumper;
     }
 
     sub set {
+
+        # set one or more parameters for a client
         my ( $self, %args ) = @_;
 
-        # warn "args to set:\n" . Dumper \%args;
+        log ( debug => "args to set:\n" . Dumper \%args );
 
         foreach my $key ( keys %args ) {
             $self->{$key} = $args{$key};
         }
-
-        # set one or more parameters for a client
     }
 
     sub read {

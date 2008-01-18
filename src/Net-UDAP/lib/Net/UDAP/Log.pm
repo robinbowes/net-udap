@@ -1,139 +1,56 @@
-package Net::UDAP::Util;
+package Net::UDAP::Log;
 
 use warnings;
 use strict;
-use Carp;
 
 use version; our $VERSION = qv('0.1');
-
-# Other recommended modules (uncomment to use):
-#  use IO::Prompt;
-#  use Perl6::Export;
-#  use Perl6::Slurp;
-#  use Perl6::Say;
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
 use Exporter qw(import);
 
-%EXPORT_TAGS
-    = ( all => [qw( decode_hex encode_ip decode_ip encode_mac decode_mac )] );
+%EXPORT_TAGS = ( all => [qw( log )] );
 Exporter::export_tags('all');
+
+use Log::StdLog {
+    handle => *STDERR,
+    level  => 'error',
+    format => \&std_log_format,
+};
 
 {
 
-    sub decode_hex {
+    sub log {
 
-        # Decode a hex string of specified length into a human-readable string
-        # $rawstr	- the raw hex string
-        # $strlen	- the length of the hex string
-        # $fmt		- the format to use to unpack each byte
-        # $separator	- the string to use as separator in the output string
-        my ( $rawstr, $strlen, $fmt, $separator ) = @_;
-        $separator = '' if !defined $separator;
-        if ( length($rawstr) == $strlen ) {
-            my @parts = unpack( "($fmt)*", $rawstr );
-            if (wantarray) {
-                return @parts;
-            }
-            else {
-                return join( "$separator", @parts );
-            }
-        }
-        else {
-            carp "Expecting string with length: $strlen";
-            return undef;
-        }
+        # A wrapper round the Log::StdLog semantics to make logging easier
+        # Also, avoids the need to use the complex use statement in
+        # all code requiring logging
+        print {*STDLOG} (@_);
     }
 
-    sub encode_ip {
+    sub std_log_format {
 
-        # Encode a dotted-quad IP address into a 4-byte string
-        # $ip		- IP address in format xxx.xxx.xxx.xxx
-        my $ip = shift;
-        if ($ip =~ /
-		    \A		    # start of string
-		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
-		    [.]		    # period literal
-		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
-		    [.]		    # period literal
-		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
-		    [.]		    # period literal
-		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
-		    /xms
-            )
-        {
-            return pack( 'C4', $1, $2, $3, $4 );
-        }
-        else {
-            carp "IP address \"$ip\" not in expected format (x.x.x.x)";
-            return undef;
-        }
+        # a subroutine that Log::StdLog will use  to format log msgs
+        my ( $date, $pid, $level, @message ) = @_;
+        return "$level: " . join( q{}, @message );
     }
 
-    sub decode_ip {
-
-        # Decode a 4-byte IP string into human-readable form
-        # $rawstr	- 4-byte hex string representing IP address
-        my $rawstr = shift;
-        return decode_hex( $rawstr, 4, 'C', '.' );
-    }
-
-    sub encode_mac {
-
-        # Encode a mac address to a 6-byte string
-        # $mac		- MAC address in format xx:xx:xx:xx:xx:xx
-        my $mac = shift;
-        if ($mac =~ /
-		    \A			# start of string
-		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    :			# semi-colon literal
-		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    :			# semi-colon literal
-		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    :			# semi-colon literal
-		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    :			# semi-colon literal
-		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    :			# semi-colon literal
-		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    /xms
-            )
-        {
-            return pack( 'C6',
-                hex($1), hex($2), hex($3), hex($4), hex($5), hex($6) );
-        }
-        else {
-            carp
-                "MAC address \"$mac\" not in expected format (xx:xx:xx:xx:xx:xx)";
-            return undef;
-        }
-    }
-
-    sub decode_mac {
-
-        # Decode a 6-byte MAC string into human-readable form
-        # $rawstr	- 6-byte hex string representing MAC address
-        my $rawstr = shift;
-        return decode_hex( $rawstr, 6, 'H2', ':' );
-    }
 }
-
 1;    # Magic true value required at end of module
 __END__
 
 =head1 NAME
 
-Net::UDAP::Util - [One line description of module's purpose here]
+Net::UDAP::Log - Wrapper module to implement logging for UDAP modules
 
 
 =head1 VERSION
 
-This document describes Net::UDAP::Util version 0.0.1
+This document describes Net::UDAP::Log version 0.1
 
 
 =head1 SYNOPSIS
 
-    use Net::UDAP::Util;
+    use Net::UDAP::Log;
 
 =for author to fill in:
     Brief code example(s) here showing commonest usage(s).
@@ -189,7 +106,7 @@ This document describes Net::UDAP::Util version 0.0.1
     that can be set. These descriptions must also include details of any
     configuration language used.
   
-Net::UDAP::Util requires no configuration files or environment variables.
+Net::UDAP::Log requires no configuration files or environment variables.
 
 
 =head1 DEPENDENCIES
@@ -229,7 +146,7 @@ None reported.
 No bugs have been reported.
 
 Please report any bugs or feature requests to
-C<bug-net-udap-util@rt.cpan.org>, or through the web interface at
+C<bug-net-udap-log@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org>.
 
 
