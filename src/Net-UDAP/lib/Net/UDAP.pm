@@ -4,28 +4,20 @@ package Net::UDAP;
 
 use warnings;
 use strict;
-use Carp;
 
 use version; our $VERSION = qv('0.1');
 
-# Other recommended modules (uncomment to use):
-#  use IO::Prompt;
-#  use Perl6::Export;
-#  use Perl6::Slurp;
-#  use Perl6::Say;
+use Net::UDAP::Constant;
+use Net::UDAP::Log;
+use Net::UDAP::Util;
+use Net::UDAP::Client;
+use Net::UDAP::MessageIn;
+use Net::UDAP::MessageOut::Discover;
 
-# Module implementation here
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 use IO::Socket::INET;
-use Net::UDAP::Log;
-
-use Net::UDAP::Constant;
-use Net::UDAP::Util;
-use Net::UDAP::Message;
-use Net::UDAP::Client;
-
 use Data::Dumper;
 
 {
@@ -60,7 +52,7 @@ use Data::Dumper;
             $args{broadcast} = BROADCAST_OFF;
         }
 
-        log ( info => "Using broadcast setting: $args{broadcast}" );
+        log( info => "Using broadcast setting: $args{broadcast}" );
 
         # Setup listening socket on UDAP port
         my $sock = IO::Socket::INET->new(
@@ -71,7 +63,7 @@ use Data::Dumper;
             Blocking  => 0,
             )
             or do {
-                log ( error => "Can't open socket on ip address: $args{ip_addr}" );
+            log( error => "Can't open socket on ip address: $args{ip_addr}" );
             };
 
         # May need to set non-blocking a different way, depending on
@@ -87,16 +79,10 @@ use Data::Dumper;
     }
 
     sub add_client {
-        my $msg = shift;
-        if ( !$msg ) {
-            log( eror => 'msg not defined in add_client' );
-            return;
-        }
-        my $mac = decode_mac( $msg->{dst_mac} );
+        my ( $mac, $device_name ) = @_;
         if ($mac) {
             $_devices{$mac} = Net::UDAP::Client->new();
-            $_devices{$mac}
-                ->set( mac => $msg->{dst_mac}, type => $msg->{device_name} );
+            $_devices{$mac}->set( mac => $mac, type => $device_name );
             return 1;
         }
         else {
@@ -108,7 +94,7 @@ use Data::Dumper;
     sub read_UDP {
         my $sock = shift;
 
-        log ( info => 'read_UDP triggered');
+        log( info => 'read_UDP triggered' );
 
         my $clientpaddr;
         my $rawmsg = q{};
@@ -127,15 +113,14 @@ use Data::Dumper;
                 # Will need to tweak this code when the clients start
                 # sending packets with non-zero IP address
                 if ( $src_ip ne IP_ZERO ) {
-                    log ( info => 'Ignoring packet with non-zero IP address' );
+                    log( info => 'Ignoring packet with non-zero IP address' );
                     last WHILE;
                 }
 
-                my $msg = Net::UDAP::Message->new();
-
-                # Unpack the msg and extract the UCP Method
+                # Create a new msg object
+                my $msg = Net::UDAP::MessageIn->new;
                 $msg->udap_decode($rawmsg);
-                my $method = $msg->{ucp_method};
+                my $method = $msg->get_ucp_method;
 
             SWITCH: {
                     ( !defined $method ) && do {
@@ -143,7 +128,8 @@ use Data::Dumper;
                         last SWITCH;
                     };
                     ( $method eq UCP_METHOD_DISCOVER ) && do {
-                        add_client($msg);
+                        add_client( $msg->get_src_mac,
+                            $msg->get_device_name );
                         last SWITCH;
                     };
 
@@ -171,14 +157,13 @@ use Data::Dumper;
         undef %_devices;
 
         # Create a discovery msg
-        my $msg
-            = Net::UDAP::Message->new( ucp_method => UCP_METHOD_DISCOVER );
+        my $msg = Net::UDAP::MessageOut::Discover->new;
 
         # send msg
         if ($msg) {
             my $destpaddr = sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
             if ($destpaddr) {
-                return $sock->send( $msg->packed(), 0, $destpaddr );
+                return $sock->send( $msg->packed, 0, $destpaddr );
             }
         }
         return;
@@ -217,7 +202,7 @@ Net::UDAP - [One line description of module's purpose here]
 
 =head1 VERSION
 
-This document describes Net::UDAP version 0.0.1
+This document describes Net::UDAP version 0.1
 
 
 =head1 SYNOPSIS

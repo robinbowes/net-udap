@@ -1,4 +1,4 @@
-package Net::UDAP::Log;
+package Net::UDAP::MessageOut::Discover;
 
 # $Id$
 
@@ -7,52 +7,49 @@ use strict;
 
 use version; our $VERSION = qv('0.1');
 
-use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
-use Exporter qw(import);
+use Net::UDAP::Constant;
 
-%EXPORT_TAGS = ( all => [qw( log )] );
-Exporter::export_tags('all');
+use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
+use base qw(Net::UDAP::MessageOut);
 
-use Log::StdLog {
-    handle => *STDERR,
-    level  => 'error',
-    format => \&std_log_format,
-};
+__PACKAGE__->follow_best_practice;
+__PACKAGE__->mk_accessors(qw());
 
 {
 
-    sub log {
+    sub new {
+        my ( $caller, $args ) = @_;
+        my $class = ref $caller || $caller;
 
-        # A wrapper round the Log::StdLog semantics to make logging easier
-        # Also, avoids the need to use the complex use statement in
-        # all code requiring logging
-        print {*STDLOG} (@_);
+        $args = {} unless defined $args;
+
+        # Set values specific to discovery packets
+        $args->{broadcast}  = BROADCAST_ON;
+        $args->{dst_mac}    = MAC_ZERO;
+        $args->{ucp_method} = UCP_METHOD_DISCOVER;
+
+        my $self = bless {%$args}, $class;
+        $self->SUPER::new( $self, $args );
+        return $self;
     }
-
-    sub std_log_format {
-
-        # a subroutine that Log::StdLog will use  to format log msgs
-        my ( $date, $pid, $level, @message ) = @_;
-        return "$level: " . join( q{}, @message );
-    }
-
 }
+
 1;    # Magic true value required at end of module
 __END__
 
 =head1 NAME
 
-Net::UDAP::Log - Wrapper module to implement logging for UDAP modules
+Net::UDAP::MessageOut::Discover - [One line description of module's purpose here]
 
 
 =head1 VERSION
 
-This document describes Net::UDAP::Log version 0.1
+This document describes Net::UDAP::MessageOut::Discover version 0.1
 
 
 =head1 SYNOPSIS
 
-    use Net::UDAP::Log;
+    use Net::UDAP::Message::Discover;
 
 =for author to fill in:
     Brief code example(s) here showing commonest usage(s).
@@ -108,7 +105,7 @@ This document describes Net::UDAP::Log version 0.1
     that can be set. These descriptions must also include details of any
     configuration language used.
   
-Net::UDAP::Log requires no configuration files or environment variables.
+Net::UDAP::Message requires no configuration files or environment variables.
 
 
 =head1 DEPENDENCIES
@@ -148,7 +145,7 @@ None reported.
 No bugs have been reported.
 
 Please report any bugs or feature requests to
-C<bug-net-udap-log@rt.cpan.org>, or through the web interface at
+C<bug-net-udap-message@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org>.
 
 

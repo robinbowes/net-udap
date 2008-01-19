@@ -1,4 +1,4 @@
-package Net::UDAP::Log;
+package Net::UDAP::MessageIn;
 
 # $Id$
 
@@ -7,52 +7,174 @@ use strict;
 
 use version; our $VERSION = qv('0.1');
 
-use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
-use Exporter qw(import);
+use Net::UDAP::Constant;
 
-%EXPORT_TAGS = ( all => [qw( log )] );
-Exporter::export_tags('all');
+use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
+use base qw(Class::Accessor);
 
-use Log::StdLog {
-    handle => *STDERR,
-    level  => 'error',
-    format => \&std_log_format,
-};
+my %field_default_values = (
+
+    # define fields and default values here
+    dst_addr_type => undef,
+    dst_mac       => undef,
+    dst_ip        => undef,
+    dst_port      => undef,
+    src_addr_type => undef,
+    src_mac       => undef,
+    src_ip        => undef,
+    src_port      => undef,
+    seq           => undef,    # unused?
+    udap_type     => undef,
+    ucp_flags     => undef,    # unused?
+    uap_class     => undef,
+    ucp_method    => undef,
+    ucp_code      => undef,
+    data_length   => undef,
+    device_name   => undef,
+);
+
+__PACKAGE__->follow_best_practice;
+__PACKAGE__->mk_accessors( keys(%field_default_values) );
 
 {
 
-    sub log {
+    sub new {
+        my ( $caller, $args ) = @_;
+        my $class = ref $caller || $caller;
 
-        # A wrapper round the Log::StdLog semantics to make logging easier
-        # Also, avoids the need to use the complex use statement in
-        # all code requiring logging
-        print {*STDLOG} (@_);
+        $args = {} unless defined $args;
+
+        # add default values to args hash if fieldname not specified
+        foreach my $fieldname ( keys %field_default_values ) {
+            if ( !exists $args->{$fieldname} ) {
+                $args->{$fieldname} = $field_default_values{$fieldname};
+            }
+        }
+
+        my $self = bless {%$args}, $class;
+        return $self;
     }
 
-    sub std_log_format {
+    sub prepare_credential {
 
-        # a subroutine that Log::StdLog will use  to format log msgs
-        my ( $date, $pid, $level, @message ) = @_;
-        return "$level: " . join( q{}, @message );
+        # return 32 packed hex zeros
+        return pack( 'C' x 32, (0x00) x 32 );
     }
 
+    sub udap_decode {
+        my ( $self, $rawmsg ) = @_;
+
+        my $os = 0;    # offset from start of raw message
+
+        # src addr type
+        $self->set_dst_addr_type( substr( $rawmsg, $os, 2 ) );
+        $os += 2;
+
+        # src mac or src IP + port
+    SWITCH: {
+            ( $self->get_dst_addr_type eq ADDR_TYPE_ETH ) && do {
+                $self->set_dst_mac( substr( $rawmsg, $os, 6 ) );
+                last SWITCH;
+            };
+            ( $self->get_dst_addr_type eq ADDR_TYPE_UDP ) && do {
+                $self->set_dst_ip( substr( $rawmsg, $os, 4 ) );
+                $self->set_dst_port( substr( $rawmsg, $os + 4, 2 ) );
+                last SWITCH;
+            };
+            warn "unknown address type";
+        }
+        $os += 6;
+
+        # dest addr type ( two bytes)
+        $self->set_src_addr_type( substr( $rawmsg, $os, 2 ) );
+        $os += 2;
+
+        # dest mac or src IP + port
+    SWITCH: {
+            ( $self->get_src_addr_type eq ADDR_TYPE_ETH ) && do {
+                $self->set_src_mac( substr( $rawmsg, $os, 6 ) );
+                last SWITCH;
+            };
+            ( $self->get_src_addr_type eq ADDR_TYPE_UDP ) && do {
+                $self->set_src_ip( substr( $rawmsg, $os, 4 ) );
+                $self->set_src_port( substr( $rawmsg, $os + 4, 2 ) );
+                last SWITCH;
+            };
+            warn "unknown address type";
+        }
+        $os += 6;
+
+        # seq
+        $self->set_seq( substr( $rawmsg, $os, 2 ) );
+        $os += 2;
+
+        # udap type
+        $self->set_udap_type( substr( $rawmsg, $os, 2 ) );
+        $os += 2;
+
+        # flag
+        $self->set_ucp_flags( substr( $rawmsg, $os, 1 ) );
+        $os += 1;
+
+        # uap class
+        $self->set_uap_class( substr( $rawmsg, $os, 4 ) );
+        $os += 4;
+
+        # ucp method
+        $self->set_ucp_method( substr( $rawmsg, $os, 2 ) );
+        $os += 2;
+
+        # Now, do different things depending on what packet type this is
+    SWITCH: {
+            ( $self->get_ucp_method eq UCP_METHOD_DISCOVER ) && do {
+
+                # ucp code
+                $self->set_ucp_code( substr( $rawmsg, $os, 1 ) );
+                $os += 1;
+
+                # length of following string
+                $self->set_data_length( substr( $rawmsg, $os, 1 ) );
+                $os += 1;
+
+                my $length = unpack( 'c', $self->get_data_length );
+
+                # Get name of target
+                $self->set_device_name( substr( $rawmsg, $os, $length ) );
+                $os += $length;
+
+                last SWITCH;
+            };
+
+            () && do {
+
+                last SWITCH;
+            };
+
+            # default goes here
+            use Data::HexDump;
+            warn "raw msg:\n" . HexDump($rawmsg);
+            warn "unpacked msg object:\n" . Dumper( \$self );
+
+        }
+    }
 }
+
 1;    # Magic true value required at end of module
 __END__
 
 =head1 NAME
 
-Net::UDAP::Log - Wrapper module to implement logging for UDAP modules
+Net::UDAP::MessageIn - [One line description of module's purpose here]
 
 
 =head1 VERSION
 
-This document describes Net::UDAP::Log version 0.1
+This document describes Net::UDAP::MessageIn version 0.1
 
 
 =head1 SYNOPSIS
 
-    use Net::UDAP::Log;
+    use Net::UDAP::MessageIn;
 
 =for author to fill in:
     Brief code example(s) here showing commonest usage(s).
@@ -108,7 +230,7 @@ This document describes Net::UDAP::Log version 0.1
     that can be set. These descriptions must also include details of any
     configuration language used.
   
-Net::UDAP::Log requires no configuration files or environment variables.
+Net::UDAP::Message requires no configuration files or environment variables.
 
 
 =head1 DEPENDENCIES
@@ -148,7 +270,7 @@ None reported.
 No bugs have been reported.
 
 Please report any bugs or feature requests to
-C<bug-net-udap-log@rt.cpan.org>, or through the web interface at
+C<bug-net-udap-message@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org>.
 
 

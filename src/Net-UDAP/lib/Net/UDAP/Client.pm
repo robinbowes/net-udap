@@ -14,7 +14,6 @@ use version; our $VERSION = qv('0.1');
 #  use Perl6::Slurp;
 #  use Perl6::Say;
 
-
 # Module implementation here
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
@@ -46,7 +45,7 @@ use Data::Dumper;
         # set one or more parameters for a client
         my ( $self, %args ) = @_;
 
-        log ( debug => "args to set:\n" . Dumper \%args );
+        log( debug => "args to set:\n" . Dumper \%args );
 
         foreach my $key ( keys %args ) {
             $self->{$key} = $args{$key};
@@ -72,7 +71,7 @@ use Data::Dumper;
     }
 }
 
-1; # Magic true value required at end of module
+1;    # Magic true value required at end of module
 __END__
 
 =head1 NAME

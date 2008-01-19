@@ -8,20 +8,14 @@ use Carp;
 
 use version; our $VERSION = qv('0.1');
 
-# Other recommended modules (uncomment to use):
-#  use IO::Prompt;
-#  use Perl6::Export;
-#  use Perl6::Slurp;
-#  use Perl6::Say;
-
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
 use Exporter qw(import);
 
 %EXPORT_TAGS = (
     ADDR_TYPES =>
         [qw( ADDR_TYPE_RAW ADDR_TYPE_ETH ADDR_TYPE_UDP ADDR_TYPE_THREE )],
-    BROADCAST => [qw( BROADCAST_OFF BROADCAST_ON )],
-    DHCP      => [qw( DHCP_OFF DHCP_ON )],
+    BROADCAST  => [qw( BROADCAST_OFF BROADCAST_ON )],
+    DHCP       => [qw( DHCP_OFF DHCP_ON )],
     NETWORK    => [qw( DST_TYPE_ETH IP_ZERO MAC_ZERO PORT_UDAP PORT_ZERO )],
     SBR_PARAMS => [
         qw( SBR_PARAM_LENGTH_NAME SBR_PARAM_NAME_OFFSET SBR_PARAM_OFFSET_NAME )
