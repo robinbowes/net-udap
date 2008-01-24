@@ -4,21 +4,22 @@ package Net::UDAP;
 
 use warnings;
 use strict;
+use Carp;
+use Data::Dumper;
 
 use version; our $VERSION = qv('0.1');
 
+use Net::UDAP::Client;
 use Net::UDAP::Constant;
 use Net::UDAP::Log;
-use Net::UDAP::Util;
-use Net::UDAP::Client;
 use Net::UDAP::MessageIn;
-use Net::UDAP::MessageOut::Discover;
+use Net::UDAP::MessageOut;
+use Net::UDAP::Util;
 
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 use IO::Socket::INET;
-use Data::Dumper;
 
 {
 
@@ -52,7 +53,7 @@ use Data::Dumper;
             $args{broadcast} = BROADCAST_OFF;
         }
 
-        log( info => "Using broadcast setting: $args{broadcast}" );
+        log( info => 'Using broadcast setting: ' . $args{broadcast} );
 
         # Setup listening socket on UDAP port
         my $sock = IO::Socket::INET->new(
@@ -63,7 +64,10 @@ use Data::Dumper;
             Blocking  => 0,
             )
             or do {
-            log( error => "Can't open socket on ip address: $args{ip_addr}" );
+            croak(    "Can't open udp socket on "
+                    . $args{ip_addr} . ':'
+                    . PORT_UDAP
+                    . " : $@" );
             };
 
         # May need to set non-blocking a different way, depending on
@@ -83,10 +87,14 @@ use Data::Dumper;
         if ($mac) {
             $_devices{$mac} = Net::UDAP::Client->new();
             $_devices{$mac}->set( mac => $mac, type => $device_name );
+            log(      info => 'Adding client "'
+                    . $device_name
+                    . '" with MAC address: '
+                    . decode_mac($mac) );
             return 1;
         }
         else {
-            log( error => 'MAC address not valid in add_client' );
+            carp('MAC address not defined in add_client');
             return;
         }
     }
@@ -94,7 +102,7 @@ use Data::Dumper;
     sub read_UDP {
         my $sock = shift;
 
-        log( info => 'read_UDP triggered' );
+        log( debug => 'read_UDP triggered' );
 
         my $clientpaddr;
         my $rawmsg = q{};
@@ -119,15 +127,23 @@ use Data::Dumper;
 
                 # Create a new msg object
                 my $msg = Net::UDAP::MessageIn->new;
-                $msg->udap_decode($rawmsg);
+
+		# decode the msg - udaP-decode will croak if there's an error
+		# so wrap this in an eval block and check for success
+		# croak if the decode fails
+                eval { $msg->udap_decode($rawmsg) } or do {
+		    carp( $@ );
+		    return $packet_received;
+		};
+
                 my $method = $msg->get_ucp_method;
+		if (!defined $method) {
+		    croak( 'ucp_method not defined' );
+		}
 
             SWITCH: {
-                    ( !defined $method ) && do {
-                        warn 'msg method not set';
-                        last SWITCH;
-                    };
                     ( $method eq UCP_METHOD_DISCOVER ) && do {
+                        log( info => "Discovery packet received\n" );
                         add_client( $msg->get_src_mac,
                             $msg->get_device_name );
                         last SWITCH;
@@ -157,7 +173,8 @@ use Data::Dumper;
         undef %_devices;
 
         # Create a discovery msg
-        my $msg = Net::UDAP::MessageOut::Discover->new;
+        my $msg = Net::UDAP::MessageOut->new(
+            { ucp_method => UCP_METHOD_DISCOVER } );
 
         # send msg
         if ($msg) {

@@ -4,15 +4,17 @@ package Net::UDAP::MessageOut;
 
 use warnings;
 use strict;
+use Carp;
 
 use version; our $VERSION = qv('0.1');
 
 use Net::UDAP::Constant;
+use Net::UDAP::Log;
 
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
-my %field_default_values = (
+my %field_default = (
 
     # define fields and default values here
     broadcast  => BROADCAST_OFF,
@@ -29,24 +31,43 @@ my %field_default_values = (
 );
 
 __PACKAGE__->follow_best_practice;
-__PACKAGE__->mk_accessors( keys(%field_default_values) );
+__PACKAGE__->mk_accessors( keys(%field_default) );
 
 {
 
     sub new {
-        my ( $caller, $args ) = @_;
+        my ( $caller, $arg_ref ) = @_;
         my $class = ref $caller || $caller;
 
-        $args = {} unless defined $args;
+        # make sure $arg_ref is a hash ref
+        $arg_ref = {} unless defined $arg_ref;
 
-        # set default values to args hash if fieldname not specified
-        foreach my $fieldname ( keys %field_default_values ) {
-            if ( !exists $args->{$fieldname} ) {
-                $args->{$fieldname} = $field_default_values{$fieldname};
-            }
+        # values from $arg_ref over-write the defaults
+        my %arg = ( %field_default, %{$arg_ref} );
+
+        # A method must be specified, i.e. what type of packet is this?
+        if ( !defined $arg{'ucp_method'} ) {
+            croak(
+                'Must specify ucp_method when create a new MessageOut object'
+            );
         }
 
-        my $self = bless {%$args}, $class;
+        # Set values and perform checks specific to each packet type
+    SWITCH: {
+            ( $arg{ucp_method} eq UCP_METHOD_DISCOVER ) && do {
+
+                # Set values specific to discovery packets
+                $arg{broadcast} = BROADCAST_ON;
+                $arg{dst_mac}   = MAC_ZERO;
+                last SWITCH;
+            };
+
+            # default action if ucp_method value recognised
+            croak( 'Invalid ucp_method: '
+                    . bytes_to_hex( $arg{ucp_method}, 4 ) );
+        }
+
+        my $self = bless {%arg}, $class;
         return $self;
     }
 

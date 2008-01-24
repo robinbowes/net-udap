@@ -12,7 +12,9 @@ use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
 use Exporter qw(import);
 
 %EXPORT_TAGS
-    = ( all => [qw( decode_hex encode_ip decode_ip encode_mac decode_mac )] );
+    = (
+    all => [qw( hexstr decode_hex encode_ip decode_ip encode_mac decode_mac )]
+    );
 Exporter::export_tags('all');
 
 {
@@ -111,6 +113,18 @@ Exporter::export_tags('all');
         # $rawstr	- 6-byte hex string representing MAC address
         my $rawstr = shift;
         return decode_hex( $rawstr, 6, 'H2', ':' );
+    }
+
+    sub hexstr {
+
+        # decode the supplied bytes as a hex number string
+        # $bytes	- the byte string to decode
+        # $width	- the width of the output
+        # sample output (width=4): 0x0001
+        my ( $bytes, $width ) = @_;
+        return
+            sprintf( join( q{}, '0x%0', int($width), 'x' ),
+            unpack( 'n', $bytes ) );
     }
 }
 

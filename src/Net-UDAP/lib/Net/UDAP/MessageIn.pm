@@ -4,17 +4,17 @@ package Net::UDAP::MessageIn;
 
 use warnings;
 use strict;
+use Carp;
 
 use version; our $VERSION = qv('0.1');
 
 use Net::UDAP::Constant;
+use Net::UDAP::Util;
 
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
-my %field_default_values = (
-
-    # define fields and default values here
+my %field_default = (
     dst_addr_type => undef,
     dst_mac       => undef,
     dst_ip        => undef,
@@ -23,9 +23,9 @@ my %field_default_values = (
     src_mac       => undef,
     src_ip        => undef,
     src_port      => undef,
-    seq           => undef,    # unused?
+    seq           => undef,
     udap_type     => undef,
-    ucp_flags     => undef,    # unused?
+    ucp_flags     => undef,
     uap_class     => undef,
     ucp_method    => undef,
     ucp_code      => undef,
@@ -34,24 +34,21 @@ my %field_default_values = (
 );
 
 __PACKAGE__->follow_best_practice;
-__PACKAGE__->mk_accessors( keys(%field_default_values) );
+__PACKAGE__->mk_accessors( keys %field_default );
 
 {
 
     sub new {
-        my ( $caller, $args ) = @_;
+        my ( $caller, $arg_ref ) = @_;
         my $class = ref $caller || $caller;
 
-        $args = {} unless defined $args;
+        # Define hash ref if no args passed
+        $arg_ref = {} unless defined $arg_ref;
 
-        # add default values to args hash if fieldname not specified
-        foreach my $fieldname ( keys %field_default_values ) {
-            if ( !exists $args->{$fieldname} ) {
-                $args->{$fieldname} = $field_default_values{$fieldname};
-            }
-        }
+        # Values from $arg_ref over-write the default values
+        my %arg = ( %field_default, %{$arg_ref} );
 
-        my $self = bless {%$args}, $class;
+        my $self = bless {%arg}, $class;
         return $self;
     }
 
@@ -62,84 +59,93 @@ __PACKAGE__->mk_accessors( keys(%field_default_values) );
     }
 
     sub udap_decode {
-        my ( $self, $rawmsg ) = @_;
+        my ( $self, $rawstr ) = @_;
 
-        my $os = 0;    # offset from start of raw message
+        # Initialise offset from start of raw string
+        # This is incremented as we read characters from the string
+        my $os = 0;
 
-        # src addr type
-        $self->set_dst_addr_type( substr( $rawmsg, $os, 2 ) );
+        # get dst addr type
+        $self->set_dst_addr_type( substr( $rawstr, $os, 2 ) );
         $os += 2;
 
-        # src mac or src IP + port
+     # get *either* dst mac *or* dst IP + port, depending on the dst_addr_type
     SWITCH: {
             ( $self->get_dst_addr_type eq ADDR_TYPE_ETH ) && do {
-                $self->set_dst_mac( substr( $rawmsg, $os, 6 ) );
+                $self->set_dst_mac( substr( $rawstr, $os, 6 ) );
                 last SWITCH;
             };
             ( $self->get_dst_addr_type eq ADDR_TYPE_UDP ) && do {
-                $self->set_dst_ip( substr( $rawmsg, $os, 4 ) );
-                $self->set_dst_port( substr( $rawmsg, $os + 4, 2 ) );
+                $self->set_dst_ip( substr( $rawstr, $os, 4 ) );
+                $self->set_dst_port( substr( $rawstr, $os + 4, 2 ) );
                 last SWITCH;
             };
-            warn "unknown address type";
+
+            # default action if dst address type not recognised
+            croak( 'Unknown dst_addr_type value found: '
+                    . hexstr( $self->get_dst_addr_type, 4 ) );
         }
         $os += 6;
 
-        # dest addr type ( two bytes)
-        $self->set_src_addr_type( substr( $rawmsg, $os, 2 ) );
+        # get src addr type
+        $self->set_src_addr_type( substr( $rawstr, $os, 2 ) );
         $os += 2;
 
-        # dest mac or src IP + port
+     # get *either* src mac *or* src IP + port, depending on the src_addr_type
     SWITCH: {
             ( $self->get_src_addr_type eq ADDR_TYPE_ETH ) && do {
-                $self->set_src_mac( substr( $rawmsg, $os, 6 ) );
+                $self->set_src_mac( substr( $rawstr, $os, 6 ) );
                 last SWITCH;
             };
             ( $self->get_src_addr_type eq ADDR_TYPE_UDP ) && do {
-                $self->set_src_ip( substr( $rawmsg, $os, 4 ) );
-                $self->set_src_port( substr( $rawmsg, $os + 4, 2 ) );
+                $self->set_src_ip( substr( $rawstr, $os, 4 ) );
+                $self->set_src_port( substr( $rawstr, $os + 4, 2 ) );
                 last SWITCH;
             };
-            warn "unknown address type";
+
+            # default action if src address type not recognised
+            croak( 'Unknown src_addr_type value found: '
+                    . hexstr( $self->get_src_addr_type, 4 ) );
         }
         $os += 6;
 
         # seq
-        $self->set_seq( substr( $rawmsg, $os, 2 ) );
+        $self->set_seq( substr( $rawstr, $os, 2 ) );
         $os += 2;
 
         # udap type
-        $self->set_udap_type( substr( $rawmsg, $os, 2 ) );
+        $self->set_udap_type( substr( $rawstr, $os, 2 ) );
         $os += 2;
 
         # flag
-        $self->set_ucp_flags( substr( $rawmsg, $os, 1 ) );
+        $self->set_ucp_flags( substr( $rawstr, $os, 1 ) );
         $os += 1;
 
         # uap class
-        $self->set_uap_class( substr( $rawmsg, $os, 4 ) );
+        $self->set_uap_class( substr( $rawstr, $os, 4 ) );
         $os += 4;
 
         # ucp method
-        $self->set_ucp_method( substr( $rawmsg, $os, 2 ) );
+        $self->set_ucp_method( substr( $rawstr, $os, 2 ) );
         $os += 2;
 
         # Now, do different things depending on what packet type this is
     SWITCH: {
+
             ( $self->get_ucp_method eq UCP_METHOD_DISCOVER ) && do {
 
                 # ucp code
-                $self->set_ucp_code( substr( $rawmsg, $os, 1 ) );
+                $self->set_ucp_code( substr( $rawstr, $os, 1 ) );
                 $os += 1;
 
                 # length of following string
-                $self->set_data_length( substr( $rawmsg, $os, 1 ) );
+                $self->set_data_length( substr( $rawstr, $os, 1 ) );
                 $os += 1;
 
                 my $length = unpack( 'c', $self->get_data_length );
 
                 # Get name of target
-                $self->set_device_name( substr( $rawmsg, $os, $length ) );
+                $self->set_device_name( substr( $rawstr, $os, $length ) );
                 $os += $length;
 
                 last SWITCH;
@@ -150,12 +156,11 @@ __PACKAGE__->mk_accessors( keys(%field_default_values) );
                 last SWITCH;
             };
 
-            # default goes here
-            use Data::HexDump;
-            warn "raw msg:\n" . HexDump($rawmsg);
-            warn "unpacked msg object:\n" . Dumper( \$self );
-
+            # default action if ucp_method is not recognised goes here
+            croak( 'Unknown ucp_method value found: '
+                    . hexstr( $self->get_ucp_method, 4 ) );
         }
+        return 1;
     }
 }
 

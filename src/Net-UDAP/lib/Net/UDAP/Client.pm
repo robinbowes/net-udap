@@ -45,7 +45,7 @@ use Data::Dumper;
         # set one or more parameters for a client
         my ( $self, %args ) = @_;
 
-        log( debug => "args to set:\n" . Dumper \%args );
+        log( debug => "setting client args:\n" . Dumper \%args );
 
         foreach my $key ( keys %args ) {
             $self->{$key} = $args{$key};
