@@ -14,14 +14,14 @@ use Exporter qw(import);
 %EXPORT_TAGS = (
     ADDR_TYPES =>
         [qw( ADDR_TYPE_RAW ADDR_TYPE_ETH ADDR_TYPE_UDP ADDR_TYPE_THREE )],
-    BROADCAST  => [qw( BROADCAST_OFF BROADCAST_ON )],
-    DHCP       => [qw( DHCP_OFF DHCP_ON )],
-    NETWORK    => [qw( DST_TYPE_ETH IP_ZERO MAC_ZERO PORT_UDAP PORT_ZERO )],
-    SBR_PARAMS => [
-        qw( SBR_PARAM_LENGTH_NAME SBR_PARAM_NAME_OFFSET SBR_PARAM_OFFSET_NAME )
+    BROADCAST => [qw( BROADCAST_OFF BROADCAST_ON )],
+    DHCP      => [qw( DHCP_OFF DHCP_ON )],
+    NETWORK   => [qw( DST_TYPE_ETH IP_ZERO MAC_ZERO PORT_UDAP PORT_ZERO )],
+    HASHES    => [
+        qw( $name_from_offset $length_from_name $offset_from_name $ucp_method_name $ucp_code_param_name)
     ],
     UCP_CODES => [
-        qw( UCP_CODE_ZERO UCP_CODE_ONE UCP_CODE_DEVICE_NAME UCP_CODE_DEVICE_TYPE UCP_CODE_USE_DHCP UCP_CODE_IP_ADDR UCP_CODE_SUBNET_MASK UCP_CODE_GATEWAY_ADDR UCP_CODE_EIGHT UCP_CODE_FIRMWARE_REV UCP_CODE_HARDWARE_REV UCP_CODE_DEVICE_ID UCP_CODE_DEVICE_STATUS UCP_CODE_THIRTEEN )
+        qw( UCP_CODE_ZERO UCP_CODE_ONE UCP_CODE_DEVICE_NAME UCP_CODE_DEVICE_TYPE UCP_CODE_USE_DHCP UCP_CODE_IP_ADDR UCP_CODE_SUBNET_MASK UCP_CODE_GATEWAY_ADDR UCP_CODE_EIGHT UCP_CODE_FIRMWARE_REV UCP_CODE_HARDWARE_REV UCP_CODE_DEVICE_ID UCP_CODE_DEVICE_STATUS UCP_CODE_UUID )
     ],
     UCP_METHODS => [
         qw( UCP_METHOD_ZERO UCP_METHOD_DISCOVER UCP_METHOD_GET_IP UCP_METHOD_SET_IP UCP_METHOD_RESET UCP_METHOD_GET_DATA UCP_METHOD_SET_DATA UCP_METHOD_ERROR UCP_METHOD_CREDENTIALS_ERROR UCP_METHOD_ADV_DISCOVER UCP_METHOD_TEN )
@@ -49,9 +49,13 @@ use Exporter qw(import);
 
 Exporter::export_tags('all');
 
-my %name_from_offset;
-my %length_from_name;
-my %offset_from_name;
+# hashes holding lookup tables
+# (hashrefs are exported as constants)
+our $name_from_offset = {};
+our $length_from_name = {};
+our $offset_from_name = {};
+our $ucp_method_name  = {};
+our $ucp_code_param_name = {};
 
 # Address Types
 use constant ADDR_TYPE_RAW   => pack( 'CC', 0x00, 0x00 );
@@ -75,9 +79,10 @@ use constant PORT_UDAP    => 0x4578;                     # port no. 17784
 use constant PORT_ZERO    => pack( 'C2', (0x00) x 2 );
 
 # Hashes to decode the offset and length of the parameters in the msg
-use constant SBR_PARAM_LENGTH_NAME => \%length_from_name;
-use constant SBR_PARAM_NAME_OFFSET => \%name_from_offset;
-use constant SBR_PARAM_OFFSET_NAME => \%offset_from_name;
+use constant SBR_PARAM_LENGTH_NAME => $length_from_name;
+use constant SBR_PARAM_NAME_OFFSET => $name_from_offset;
+use constant SBR_PARAM_OFFSET_NAME => $offset_from_name;
+use constant UCP_METHOD_NAME       => $ucp_method_name;
 
 # UCP Codes
 use constant UCP_CODE_ZERO          => pack( 'C', 0x00 );
@@ -93,7 +98,26 @@ use constant UCP_CODE_FIRMWARE_REV  => pack( 'C', 0x09 );
 use constant UCP_CODE_HARDWARE_REV  => pack( 'C', 0x0a );
 use constant UCP_CODE_DEVICE_ID     => pack( 'C', 0x0b );
 use constant UCP_CODE_DEVICE_STATUS => pack( 'C', 0x0c );
-use constant UCP_CODE_THIRTEEN      => pack( 'C', 0x0d );
+use constant UCP_CODE_UUID          => pack( 'C', 0x0d );
+
+# lookup hash mapping ucp_code constants to the client
+# parameter in which the data is stored
+$ucp_code_param_name = {
+    UCP_CODE_ZERO,          undef,
+    UCP_CODE_ONE,           undef,
+    UCP_CODE_DEVICE_NAME,   'hostname',
+    UCP_CODE_DEVICE_TYPE,   'device_type',
+    UCP_CODE_USE_DHCP,      'lan_ip_mode',
+    UCP_CODE_IP_ADDR,       'lan_network_address',
+    UCP_CODE_SUBNET_MASK,   'lan_subnet_mask',
+    UCP_CODE_GATEWAY_ADDR,  'lan_gateway',
+    UCP_CODE_EIGHT,         undef,
+    UCP_CODE_FIRMWARE_REV,  'firmware_rev',
+    UCP_CODE_HARDWARE_REV,  'hardware_rev',
+    UCP_CODE_DEVICE_ID,     'device_id',
+    UCP_CODE_DEVICE_STATUS, 'device_status',
+    UCP_CODE_UUID,          'uuid',
+};
 
 # UCP methods
 use constant UCP_METHOD_ZERO              => pack( 'CC', 0x00, 0x00 );
@@ -107,6 +131,21 @@ use constant UCP_METHOD_ERROR             => pack( 'CC', 0x00, 0x07 );
 use constant UCP_METHOD_CREDENTIALS_ERROR => pack( 'CC', 0x00, 0x08 );
 use constant UCP_METHOD_ADV_DISCOVER      => pack( 'CC', 0x00, 0x09 );
 use constant UCP_METHOD_TEN               => pack( 'CC', 0x00, 0x0A );
+
+# Lookup hash mapping ucp_method constants to name strings
+$ucp_method_name = {
+    UCP_METHOD_ZERO,              undef,
+    UCP_METHOD_DISCOVER,          'discovery',
+    UCP_METHOD_GET_IP,            'get_ip',
+    UCP_METHOD_SET_IP,            'set_ip',
+    UCP_METHOD_RESET,             'reset',
+    UCP_METHOD_GET_DATA,          'get_data',
+    UCP_METHOD_SET_DATA,          'set_data',
+    UCP_METHOD_ERROR,             'error',
+    UCP_METHOD_CREDENTIALS_ERROR, 'credentials_error',
+    UCP_METHOD_ADV_DISCOVER,      'adv_discovery',
+    UCP_METHOD_TEN,               undef,
+};
 
 # Wireless modes
 use constant WLAN_MODE_INFRASTRUCTURE => pack( 'C', 0x00 );
@@ -142,7 +181,7 @@ use constant UAP_CLASS_UCP => pack( 'C4', 0x00, 0x01, 0x00, 0x01 );
 use constant UDP_MAX_MSG_LEN => 1500;
 
 {
-    our @parameter_data = (
+    my @parameter_data = (
 
         # name, offset, length
         'lan_ip_mode',            4,   1,
@@ -176,9 +215,9 @@ use constant UDP_MAX_MSG_LEN => 1500;
         my $param_name   = shift @parameter_data;
         my $param_offset = shift @parameter_data;
         my $param_length = shift @parameter_data;
-        $name_from_offset{$param_offset} = $param_name;
-        $length_from_name{$param_name}   = $param_length;
-        $offset_from_name{$param_name}   = $param_offset;
+        $name_from_offset->{$param_offset} = $param_name;
+        $length_from_name->{$param_name}   = $param_length;
+        $offset_from_name->{$param_name}   = $param_offset;
     }
 }
 

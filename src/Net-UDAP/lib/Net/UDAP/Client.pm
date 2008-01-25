@@ -5,14 +5,9 @@ package Net::UDAP::Client;
 use warnings;
 use strict;
 use Carp;
+use Data::Dumper;
 
 use version; our $VERSION = qv('0.1');
-
-# Other recommended modules (uncomment to use):
-#  use IO::Prompt;
-#  use Perl6::Export;
-#  use Perl6::Slurp;
-#  use Perl6::Say;
 
 # Module implementation here
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
@@ -21,53 +16,85 @@ use base qw(Class::Accessor);
 use Net::UDAP::Util;
 use Net::UDAP::Log;
 
-use Data::Dumper;
+my %fields_default = (
+
+    # define fields and default values here
+    bridging             => undef,
+    hostname             => undef,
+    device_id            => undef,
+    device_type          => undef,
+    firmware_rev         => undef,
+    hardware_rev         => undef,
+    interface            => undef,
+    lan_gateway          => undef,
+    lan_ip_mode          => undef,
+    lan_network_address  => undef,
+    lan_subnet_mask      => undef,
+    mac                  => undef,
+    primary_dns          => undef,
+    secondary_dns        => undef,
+    server_address       => undef,
+    slimserver_address   => undef,
+    slimserver_name      => undef,
+    uuid                 => undef,
+    wireless_channel     => undef,
+    wireless_keylen      => undef,
+    wireless_mode        => undef,
+    wireless_region_id   => undef,
+    wireless_SSID        => undef,
+    wireless_wep_key_0   => undef,
+    wireless_wep_key_1   => undef,
+    wireless_wep_key_2   => undef,
+    wireless_wep_key_3   => undef,
+    wireless_wepon       => undef,
+    wireless_wpa_cipher  => undef,
+    wireless_wpa_enabled => undef,
+    wireless_wpa_mode    => undef,
+    wireless_wpa_psk     => undef,
+);
+
+__PACKAGE__->follow_best_practice;
+__PACKAGE__->mk_accessors( keys(%fields_default) );
 
 {
 
     # class methods
     sub new {
-        my ( $caller, %arg ) = @_;
+        my ( $caller, $args_ref ) = @_;
         my $class = ref $caller || $caller;
-        my $self = bless {}, $class;
 
-        # define stuff here
+        # make sure $arg_ref is a hash ref
+        $args_ref = {} unless defined $args_ref;
+
+        # values from $arg_ref over-write the defaults
+        my %arg = ( %fields_default, %{$args_ref} );
+
+        # A mac must be specified when creating a client
+        if ( !defined $arg{mac} ) {
+            croak(
+                'Must specify a MAC address when creating a new Client object'
+            );
+        }
+
+        my $self = bless {%arg}, $class;
         return $self;
     }
 
-    sub get {
-
-        # show one or more parameters for a client
-    }
-
-    sub set {
-
-        # set one or more parameters for a client
-        my ( $self, %args ) = @_;
-
-        log( debug => "setting client args:\n" . Dumper \%args );
-
-        foreach my $key ( keys %args ) {
-            $self->{$key} = $args{$key};
-        }
-    }
-
-    sub read {
-
-        # read all parameters from a client
-    }
-
-    sub write {
-
-        # write all parameters to a client
-    }
-
     sub display_name {
-        my ( $self, %args ) = @_;
-        my $dname = $self->{type} . ' ';
-        my @mac   = decode_mac( $self->{mac} );
+        my $self  = shift;
+        my $dname = $self->get_device_type . ' ';
+        my @mac   = split( /:/, $self->get_mac );
         $dname .= $mac[3] . $mac[4] . $mac[5];
         return $dname;
+    }
+
+    sub set_ip {
+        my ( $caller, $args_ref ) = @_;
+        my $class = ref $caller || $caller;
+
+        # make sure $arg_ref is a hash ref
+        $args_ref = {} unless defined $args_ref;
+
     }
 }
 

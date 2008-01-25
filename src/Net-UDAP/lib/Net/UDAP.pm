@@ -6,6 +6,7 @@ use warnings;
 use strict;
 use Carp;
 use Data::Dumper;
+use Data::HexDump;
 
 use version; our $VERSION = qv('0.1');
 
@@ -26,7 +27,7 @@ use IO::Socket::INET;
     # Encapsulated class data
 
     # global hash of devices
-    my %_devices;
+    my $devices_ref = {};
 
     # Class methods; these operate on encapsulated class data
 
@@ -83,20 +84,42 @@ use IO::Socket::INET;
     }
 
     sub add_client {
-        my ( $mac, $device_name ) = @_;
-        if ($mac) {
-            $_devices{$mac} = Net::UDAP::Client->new();
-            $_devices{$mac}->set( mac => $mac, type => $device_name );
-            log(      info => 'Adding client "'
-                    . $device_name
-                    . '" with MAC address: '
-                    . decode_mac($mac) );
-            return 1;
+        my $msg_ref = shift;
+        if ($msg_ref) {
+            my $mac = decode_mac( $msg_ref->{src_mac} );
+            if ($mac) {
+                my $client_params_ref = unpack_msg_to_client($msg_ref);
+                $devices_ref->{$mac}
+                    = Net::UDAP::Client->new($client_params_ref);
+            }
+            else {
+                carp('mac not found in msg');
+                return;
+            }
         }
         else {
-            carp('MAC address not defined in add_client');
+            carp('msg not defined');
             return;
         }
+    }
+
+    sub unpack_msg_to_client {
+        my $msg_ref = shift;
+
+        $msg_ref = {} if ( !defined $msg_ref );
+
+        my $client_params_ref = {};
+
+        $client_params_ref->{mac} = decode_mac( $msg_ref->{src_mac} );
+
+        # unpack data to client
+        foreach my $data_key ( keys %{ $msg_ref->{data_ref} } ) {
+            $client_params_ref->{ $ucp_code_param_name->{$data_key} }
+                = $msg_ref->{data_ref}->{$data_key}{data};
+        }
+
+        return $client_params_ref;
+
     }
 
     sub read_UDP {
@@ -104,77 +127,125 @@ use IO::Socket::INET;
 
         log( debug => 'read_UDP triggered' );
 
-        my $clientpaddr;
-        my $rawmsg = q{};
-
         my $packet_received = 0;
 
-    WHILE: {
-            while ( $clientpaddr = $sock->recv( $rawmsg, UDP_MAX_MSG_LEN ) ) {
+        ### FIXME - add a timer here to break the loop after a pre-determined
+        ### length of time to prevent DoS
 
-                $packet_received = 1;
+        while ( my $clientpaddr = $sock->recv( my $raw_msg, UDP_MAX_MSG_LEN ) )
+        {
 
-                # get src port and src IP
-                my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
+            $packet_received = 1;
 
-                # Don't process packets we sent
-                # Will need to tweak this code when the clients start
-                # sending packets with non-zero IP address
-                if ( $src_ip ne IP_ZERO ) {
-                    log( info => 'Ignoring packet with non-zero IP address' );
-                    last WHILE;
-                }
+            # get src port and src IP
+            my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
 
-                # Create a new msg object
-                my $msg = Net::UDAP::MessageIn->new;
-
-		# decode the msg - udaP-decode will croak if there's an error
-		# so wrap this in an eval block and check for success
-		# croak if the decode fails
-                eval { $msg->udap_decode($rawmsg) } or do {
-		    carp( $@ );
-		    return $packet_received;
-		};
-
-                my $method = $msg->get_ucp_method;
-		if (!defined $method) {
-		    croak( 'ucp_method not defined' );
-		}
-
-            SWITCH: {
-                    ( $method eq UCP_METHOD_DISCOVER ) && do {
-                        log( info => "Discovery packet received\n" );
-                        add_client( $msg->get_src_mac,
-                            $msg->get_device_name );
-                        last SWITCH;
-                    };
-
-                    # default action
-                    use Data::Dumper;
-                    warn "Unknown message. Here's a dump:\n"
-                        . Dumper( \$msg );
-                }
+            # Don't process packets we sent
+            ### FIXME
+            # Will need to tweak this code when the clients start
+            # sending packets with non-zero IP address
+            if ( $src_ip ne IP_ZERO ) {
+                log( info => 'Ignoring packet with non-zero IP address' );
+                return $packet_received;
             }
+            
+            process_msg( $raw_msg );
         }
+
         return $packet_received;
     }
 
-    sub _clear_data {
+    # dispatch table for received msgs
+    my %METHOD = (
+        # UCP_METHOD_ZERO,              undef,
+        UCP_METHOD_DISCOVER(),          \&method_discover,
+        UCP_METHOD_GET_IP(),            \&method_get_ip,
+        UCP_METHOD_SET_IP(),            \&method_set_ip,
+        UCP_METHOD_RESET(),             \&method_reset,
+        UCP_METHOD_GET_DATA(),          \&method_get_data,
+        UCP_METHOD_SET_DATA(),          \&method_set_data,
+        UCP_METHOD_ERROR(),             \&method_error,
+        UCP_METHOD_CREDENTIALS_ERROR(), \&method_credentials_error,
+        UCP_METHOD_ADV_DISCOVER(),      \&method_discover,
+        # UCP_METHOD_TEN,               undef,
+    );
+    
+    sub process_msg {
+        my $raw_msg = shift;
 
-        # reset all data structures
-        undef %_devices;
-        return 1;
+    # Create a new msg object from the raw msg string
+    # wrap in an eval to catch any croaks
+    #  - convert the croak to a carp and return to continue processing
+        my $msg_ref = {};
+        eval {
+            $msg_ref
+                = Net::UDAP::MessageIn->new(
+                { raw_msg => $raw_msg } );
+            }
+            or do {
+            carp($@);
+            return;
+            };
+            
+        my $method = $msg_ref->get_ucp_method;
+
+        my $handler = $METHOD{$method} ||
+            croak('ucp_method invalid or not defined.');       
+
+        log( info => $ucp_method_name->{$method}
+                . " response received\n" );
+        
+        return $handler->($msg_ref); 
+    };
+
+    sub method_discover {
+        my $msg_ref = shift;
+        return add_client($msg_ref);
+    };
+                        
+    sub method_get_ip {
+        return;
+    };
+
+    sub method_set_ip {
+        return;
+    };
+
+    sub method_reset {
+        return
+    };
+
+    sub method_get_data {
+        return;
+    };
+
+    sub method_set_data {
+        return;
+    };
+    sub method_error {
+        return;
+    };
+    
+    sub method_credentials_error {
+        return;
     }
 
-    sub discover {
-        my $sock = shift;
+    sub send_discovery {
+        my ( $sock, $args_ref ) = @_;
+
+        $args_ref = {} if ( !defined $args_ref );
+
+        # pass { advanced => 1 } to use advanced discovery
+        my $ucp_method
+            = ( $args_ref->{advanced} )
+            ? UCP_METHOD_ADV_DISCOVER
+            : UCP_METHOD_DISCOVER;
 
         # Empty the device list
-        undef %_devices;
+        $devices_ref = {};
 
         # Create a discovery msg
-        my $msg = Net::UDAP::MessageOut->new(
-            { ucp_method => UCP_METHOD_DISCOVER } );
+        my $msg = Net::UDAP::MessageOut->new( { ucp_method => $ucp_method } );
 
         # send msg
         if ($msg) {
@@ -186,27 +257,73 @@ use IO::Socket::INET;
         return;
     }
 
-    sub devices {
+    sub send_get_ip {
+        my ( $sock, $args_ref ) = @_;
+        $args_ref = {} if ( !defined $args_ref );
+
+	(exists $args_ref->{mac}) && (defined $args_ref->{mac}) or do {
+	    croak ('Must specify mac for get_ip');
+	};
+
+	my $encoded_mac = encode_mac($args_ref->{mac});
+
+	my $msg_ref;
+        eval { $msg_ref = Net::UDAP::MessageOut->new(
+            { ucp_method => UCP_METHOD_GET_IP, dst_mac => $encoded_mac } ) } or do {
+	    carp($@);
+	    return;
+	};
+
+        if ($msg_ref) {
+            my $destpaddr = sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
+            if ($destpaddr) {
+                return $sock->send( $msg_ref->packed, 0, $destpaddr );
+            }
+        }
+        return;
+    }
+
+    sub send_set_ip {
+        my ( $sock, $args_ref ) = @_;
+        $args_ref = {} if ( !defined $args_ref );
+
+        (exists $args_ref->{mac}) && (defined $args_ref->{mac}) or do {
+            croak ('Must specify mac for set_ip');
+        };
+
+        my $encoded_mac = encode_mac($args_ref->{mac});
+
+        my $msg_ref;
+        eval { $msg_ref = Net::UDAP::MessageOut->new(
+            { ucp_method => UCP_METHOD_SET_IP, dst_mac => $encoded_mac,  } ) } or do {
+            carp($@);
+            return;
+        };
+
+        if ($msg_ref) {
+            my $destpaddr = sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
+            if ($destpaddr) {
+                return $sock->send( $msg_ref->packed, 0, $destpaddr );
+            }
+        }
+        return;
+
+    }
+
+    sub get_devices {
 
         # return the hash of clients
-        return %_devices;
+        return $devices_ref;
     }
 
     sub get_device_list {
         my @devices = ();
-        foreach my $device ( keys %_devices ) {
-            push @devices, $_devices{$device}->display_name();
+        foreach my $device ( keys %{$devices_ref} ) {
+            push @devices, $devices_ref->{$device}->display_name();
         }
         return \@devices;
     }
 
-    sub get_device_hash {
-        my %devices;
-        foreach my $device ( keys %_devices ) {
-            $devices{$device} = $_devices{$device}->display_name();
-        }
-        return \%devices;
-    }
 }
 
 1;    # Magic true value required at end of module

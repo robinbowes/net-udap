@@ -8,13 +8,13 @@ use Carp;
 
 use version; our $VERSION = qv('0.1');
 
-use Net::UDAP::Constant;
-use Net::UDAP::Log;
-
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
-my %field_default = (
+use Net::UDAP::Constant;
+use Net::UDAP::Log;
+
+my %fields_default = (
 
     # define fields and default values here
     broadcast  => BROADCAST_OFF,
@@ -31,40 +31,78 @@ my %field_default = (
 );
 
 __PACKAGE__->follow_best_practice;
-__PACKAGE__->mk_accessors( keys(%field_default) );
+__PACKAGE__->mk_accessors( keys(%fields_default) );
 
 {
 
     sub new {
-        my ( $caller, $arg_ref ) = @_;
+        my ( $caller, $args_ref ) = @_;
         my $class = ref $caller || $caller;
 
         # make sure $arg_ref is a hash ref
-        $arg_ref = {} unless defined $arg_ref;
+        $args_ref = {} unless defined $args_ref;
 
-        # values from $arg_ref over-write the defaults
-        my %arg = ( %field_default, %{$arg_ref} );
+        # values from $args_ref over-write the defaults
+        my %arg = ( %fields_default, %{$args_ref} );
 
         # A method must be specified, i.e. what type of packet is this?
-        if ( !defined $arg{'ucp_method'} ) {
-            croak(
-                'Must specify ucp_method when create a new MessageOut object'
-            );
-        }
+        my $method = $arg{ucp_method};
+        (          ( defined($method) )
+                && ( exists $ucp_method_name->{$method} )
+                && ( $ucp_method_name->{$method} ) )
+            or do {
+            croak('ucp_method invalid or not defined.');
+            };
 
         # Set values and perform checks specific to each packet type
     SWITCH: {
-            ( $arg{ucp_method} eq UCP_METHOD_DISCOVER ) && do {
+            (          ( $method eq UCP_METHOD_DISCOVER )
+                    or ( $method eq UCP_METHOD_ADV_DISCOVER )
+                )
+                && do {
 
                 # Set values specific to discovery packets
                 $arg{broadcast} = BROADCAST_ON;
                 $arg{dst_mac}   = MAC_ZERO;
                 last SWITCH;
+                };
+
+            # Mac address must be specified for all remaining method types
+            if ( !defined $arg{dst_mac} ) {
+                croak(    'Must specify dst_mac MAC address for '
+                        . $ucp_method_name->{$method}
+                        . ' msgs.' );
+            }
+
+            ( $method eq UCP_METHOD_GET_IP ) && do {
+
+                last SWITCH;
+            };
+
+            ( $method eq UCP_METHOD_SET_IP ) && do {
+
+                #
+
+                last SWITCH;
+            };
+
+            ( $method eq UCP_METHOD_RESET ) && do {
+
+                last SWITCH;
+            };
+
+            ( $method eq UCP_METHOD_GET_DATA ) && do {
+
+                last SWITCH;
+            };
+
+            ( $method eq UCP_METHOD_SET_DATA ) && do {
+
+                last SWITCH;
             };
 
             # default action if ucp_method value recognised
-            croak( 'Invalid ucp_method: '
-                    . bytes_to_hex( $arg{ucp_method}, 4 ) );
+            croak( 'Invalid ucp_method: ' . bytes_to_hex( $method, 4 ) );
         }
 
         my $self = bless {%arg}, $class;

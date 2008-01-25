@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Komodo Project File - DO NOT EDIT -->
+<project id="9cdeede9-06da-4991-b6c2-6f8ca22e9228" kpf_version="4" name="Net-UDAP.kpf">
+<preference-set idref="9cdeede9-06da-4991-b6c2-6f8ca22e9228">
+  <string id="import_exclude_matches">*.*~;*.bak;*.tmp;CVS;.#*;*.pyo;*.pyc;.svn;*%*;tmp*.html;.DS_Store</string>
+  <boolean id="import_recursive">1</boolean>
+  <string relative="path" id="perlExtraPaths">src/Net-UDAP/lib</string>
+  <boolean id="import_live">1</boolean>
+  <string id="import_type">useFolders</string>
+  <string id="mappedPaths"></string>
+  <string id="import_include_matches"></string>
+</preference-set>
+</project>

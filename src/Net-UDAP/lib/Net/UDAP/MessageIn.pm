@@ -5,6 +5,8 @@ package Net::UDAP::MessageIn;
 use warnings;
 use strict;
 use Carp;
+use Data::HexDump;
+use Data::Dumper;
 
 use version; our $VERSION = qv('0.1');
 
@@ -15,6 +17,7 @@ use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 my %field_default = (
+    raw_msg	  => undef,
     dst_addr_type => undef,
     dst_mac       => undef,
     dst_ip        => undef,
@@ -28,9 +31,8 @@ my %field_default = (
     ucp_flags     => undef,
     uap_class     => undef,
     ucp_method    => undef,
-    ucp_code      => undef,
-    data_length   => undef,
-    device_name   => undef,
+    data_ref	  => {},    # store msg data as a hash ref.
+			    # the hash is: { data_length => ?, data => ? ]
 );
 
 __PACKAGE__->follow_best_practice;
@@ -49,6 +51,10 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my %arg = ( %field_default, %{$arg_ref} );
 
         my $self = bless {%arg}, $class;
+
+	if (defined $self->get_raw_msg) {
+	    $self->udap_decode;
+	}
         return $self;
     }
 
@@ -59,25 +65,31 @@ __PACKAGE__->mk_accessors( keys %field_default );
     }
 
     sub udap_decode {
-        my ( $self, $rawstr ) = @_;
+        my $self = shift;
+
+	my $raw_msg = $self->get_raw_msg;
+
+	(!defined $raw_msg) && do {
+	    croak('raw msg not set');
+	};
 
         # Initialise offset from start of raw string
         # This is incremented as we read characters from the string
         my $os = 0;
 
         # get dst addr type
-        $self->set_dst_addr_type( substr( $rawstr, $os, 2 ) );
+        $self->set_dst_addr_type( substr( $raw_msg, $os, 2 ) );
         $os += 2;
 
      # get *either* dst mac *or* dst IP + port, depending on the dst_addr_type
     SWITCH: {
             ( $self->get_dst_addr_type eq ADDR_TYPE_ETH ) && do {
-                $self->set_dst_mac( substr( $rawstr, $os, 6 ) );
+                $self->set_dst_mac( substr( $raw_msg, $os, 6 ) );
                 last SWITCH;
             };
             ( $self->get_dst_addr_type eq ADDR_TYPE_UDP ) && do {
-                $self->set_dst_ip( substr( $rawstr, $os, 4 ) );
-                $self->set_dst_port( substr( $rawstr, $os + 4, 2 ) );
+                $self->set_dst_ip( substr( $raw_msg, $os, 4 ) );
+                $self->set_dst_port( substr( $raw_msg, $os + 4, 2 ) );
                 last SWITCH;
             };
 
@@ -88,18 +100,18 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $os += 6;
 
         # get src addr type
-        $self->set_src_addr_type( substr( $rawstr, $os, 2 ) );
+        $self->set_src_addr_type( substr( $raw_msg, $os, 2 ) );
         $os += 2;
 
      # get *either* src mac *or* src IP + port, depending on the src_addr_type
     SWITCH: {
             ( $self->get_src_addr_type eq ADDR_TYPE_ETH ) && do {
-                $self->set_src_mac( substr( $rawstr, $os, 6 ) );
+                $self->set_src_mac( substr( $raw_msg, $os, 6 ) );
                 last SWITCH;
             };
             ( $self->get_src_addr_type eq ADDR_TYPE_UDP ) && do {
-                $self->set_src_ip( substr( $rawstr, $os, 4 ) );
-                $self->set_src_port( substr( $rawstr, $os + 4, 2 ) );
+                $self->set_src_ip( substr( $raw_msg, $os, 4 ) );
+                $self->set_src_port( substr( $raw_msg, $os + 4, 2 ) );
                 last SWITCH;
             };
 
@@ -110,43 +122,55 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $os += 6;
 
         # seq
-        $self->set_seq( substr( $rawstr, $os, 2 ) );
+        $self->set_seq( substr( $raw_msg, $os, 2 ) );
         $os += 2;
 
         # udap type
-        $self->set_udap_type( substr( $rawstr, $os, 2 ) );
+        $self->set_udap_type( substr( $raw_msg, $os, 2 ) );
         $os += 2;
 
         # flag
-        $self->set_ucp_flags( substr( $rawstr, $os, 1 ) );
+        $self->set_ucp_flags( substr( $raw_msg, $os, 1 ) );
         $os += 1;
 
         # uap class
-        $self->set_uap_class( substr( $rawstr, $os, 4 ) );
+        $self->set_uap_class( substr( $raw_msg, $os, 4 ) );
         $os += 4;
 
         # ucp method
-        $self->set_ucp_method( substr( $rawstr, $os, 2 ) );
+        $self->set_ucp_method( substr( $raw_msg, $os, 2 ) );
         $os += 2;
 
         # Now, do different things depending on what packet type this is
     SWITCH: {
 
-            ( $self->get_ucp_method eq UCP_METHOD_DISCOVER ) && do {
+            ( ( $self->get_ucp_method eq UCP_METHOD_DISCOVER ) or
+		( $self->get_ucp_method eq UCP_METHOD_ADV_DISCOVER ) ) && do {
 
-                # ucp code
-                $self->set_ucp_code( substr( $rawstr, $os, 1 ) );
-                $os += 1;
+		# The rest of the packet is in the format:
+		#   ucp_code, length, data
 
-                # length of following string
-                $self->set_data_length( substr( $rawstr, $os, 1 ) );
-                $os += 1;
+		my $data_ref = {};
 
-                my $length = unpack( 'c', $self->get_data_length );
+		while ($os < length($raw_msg) ) {
+                    # get ucp code
+                    my $ucp_code = substr( $raw_msg, $os, 1 );
+                    $os += 1;
 
-                # Get name of target
-                $self->set_device_name( substr( $rawstr, $os, $length ) );
-                $os += $length;
+                    # length of following string
+                    my $data_length = unpack( 'c', substr( $raw_msg, $os, 1 ));
+                    $os += 1;
+
+		    # If the data is not present, $data_length will be 0
+                    my $data = ($data_length) ? substr( $raw_msg, $os, $data_length) : '';
+	            $os += $data_length;
+
+		    # add to the data hash
+		    $data_ref->{$ucp_code} = { data_length => $data_length, data => $data };
+
+		}
+
+		$self->set_data_ref( $data_ref );
 
                 last SWITCH;
             };
@@ -160,8 +184,17 @@ __PACKAGE__->mk_accessors( keys %field_default );
             croak( 'Unknown ucp_method value found: '
                     . hexstr( $self->get_ucp_method, 4 ) );
         }
-        return 1;
+        return $self;
     }
+
+#    sub set_data {
+#	# 
+#	my ($self, $args_ref) = @_;
+#
+#	$args_ref = {} if (!defined $args_ref);
+#
+#	return $self->{data}->{$args_ref->{ucp_code}} = { datalength => $args_ref->{$data_length}, data => $args_ref->{$data} };
+#    }
 }
 
 1;    # Magic true value required at end of module
