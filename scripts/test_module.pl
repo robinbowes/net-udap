@@ -42,19 +42,19 @@ $| = 1;
 #my $wireless_password = 'abcde';
 
 # Create the socket
-my $sock = Net::UDAP::setup_socket(
-    broadcast => BROADCAST_ON );
+my $udap = Net::UDAP->new;
 
 # Send the discovery packet
-Net::UDAP::send_discovery($sock, {advanced => 1});
+
+$udap->send_discovery({advanced => 1});
 
 # Read the responses
 # readUDP returns true if it processed a packet
 # We need to repeatedly read packets until none are left
-while ( Net::UDAP::read_UDP($sock) ) { }
+while ( $udap->read_UDP ) { }
 
 # Get the hash of discovered devices
-my $discovered_devices_ref = Net::UDAP::get_devices;
+my $discovered_devices_ref = $udap->get_devices;
 
 print "Discovered devices:\n" . Dumper \$discovered_devices_ref;
 
@@ -62,11 +62,8 @@ print "Discovered devices:\n" . Dumper \$discovered_devices_ref;
 foreach my $device ( values %{$discovered_devices_ref} ) {
     #Net::UDAP::set_ip( {socket => $sock, device => $device} );
     print 'Device mac: ' . $device->get_mac . "\n";
-    Net::UDAP::send_get_ip( $sock, { mac => $device->get_mac } );
+    $udap->send_get_ip( { mac => $device->get_mac } );
 }
-
-# close the socket
-$sock->close();
 
 # Set the IP and wireless information for the first device
 # If no IP information is specified, DHCP will be used.

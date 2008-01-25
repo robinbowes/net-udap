@@ -20,14 +20,18 @@ use Net::UDAP::Util;
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
-use IO::Socket::INET;
+my %field_default = (
+    socket	  => undef,
+    devices	  => {},    # store devices in a hash
+);
+
+__PACKAGE__->follow_best_practice;
+__PACKAGE__->mk_accessors( keys %field_default );
+
+use IO::Socket;
+use IO::Interface qw{:flags};
 
 {
-
-    # Encapsulated class data
-
-    # global hash of devices
-    my $devices_ref = {};
 
     # Class methods; these operate on encapsulated class data
 
@@ -35,42 +39,25 @@ use IO::Socket::INET;
         my ( $caller, %args ) = @_;
         my $class = ref $caller || $caller;
         my $self = bless {}, $class;
-
+        
+        $self->set_socket($self->create_socket);
         return $self;
     }
+    
+    sub close {
+        my $self = shift;
+        $self->get_socket->close;
+    }
 
-    sub setup_socket {
-        my (%args) = @_;
-
-        # If no IP address passed, use 0.0.0.0
-        if ( !exists $args{ip_addr} ) {
-            $args{ip_addr} = decode_ip(IP_ZERO);
-        }
-
-        log( info => "Using IP address $args{ip_addr}" );
-
-        # If no broadcast setting specified, use "broadcast off"
-        if ( !exists $args{broadcast} ) {
-            $args{broadcast} = BROADCAST_OFF;
-        }
-
-        log( info => 'Using broadcast setting: ' . $args{broadcast} );
-
+    sub create_socket {
         # Setup listening socket on UDAP port
-        my $sock = IO::Socket::INET->new(
+        return IO::Socket::INET->new(
             Proto     => 'udp',
+#            LocalAddr => '0.0.0.0', 
             LocalPort => PORT_UDAP,
-            LocalAddr => $args{ip_addr},
-            Broadcast => $args{broadcast},
             Blocking  => 0,
-            )
-            or do {
-            croak(    "Can't open udp socket on "
-                    . $args{ip_addr} . ':'
-                    . PORT_UDAP
-                    . " : $@" );
-            };
-
+            Broadcast => 1,
+        );
         # May need to set non-blocking a different way, depending on
         # whether or not the std method works on Windows
         # This is how SC does it:
@@ -79,17 +66,42 @@ use IO::Socket::INET;
         #        ->logdie(
         #        "FATAL: Discovery init: Cannot set port nonblocking");
         #};
-
-        return $sock;
     }
-
+    
+    sub send_message {
+        my ( $self, $msg_ref ) = @_;
+        
+        my $sock = $self->get_socket;
+        my $ucp_method = $msg_ref->get_ucp_method;
+        my $dest_mac = $msg_ref->get_dst_mac;
+        
+        my $dest_ip = '255.255.255.255';
+        my $dest = pack_sockaddr_in(PORT_UDAP, inet_aton($dest_ip));
+        log( info => "sending broadcast message on $dest_ip\n" );
+        $sock->send($msg_ref->packed, 0, $dest);
+        # send as a broadcast msg
+        #for my $if ($sock->if_list) {
+        #    next unless ($sock->if_flags($if) & (IFF_BROADCAST | IFF_RUNNING | IFF_UP));
+        #    my $dest_ip = $sock->if_broadcast($if);
+        #    if ($dest_ip) {
+        #        log( info => "Broadcast message on $dest_ip\n" );
+        #        #my $dest = pack_sockaddr_in(PORT_UDAP, inet_aton($dest_ip));
+        #        my $dest = pack_sockaddr_in(PORT_UDAP, inet_aton('255.255.255.255'));
+        #        $sock->send($msg_ref->packed, 0, $dest);
+        #    } else {
+        #        log( user => $if . " is capable of broadcasting but return no broadcast:\n" );
+        #    }
+        #}
+        return;
+    }
+    
     sub add_client {
-        my $msg_ref = shift;
+        my ($self, $msg_ref) = @_;
         if ($msg_ref) {
             my $mac = decode_mac( $msg_ref->{src_mac} );
             if ($mac) {
                 my $client_params_ref = unpack_msg_to_client($msg_ref);
-                $devices_ref->{$mac}
+                $self->get_devices->{$mac}
                     = Net::UDAP::Client->new($client_params_ref);
             }
             else {
@@ -123,7 +135,7 @@ use IO::Socket::INET;
     }
 
     sub read_UDP {
-        my $sock = shift;
+        my $self = shift;
 
         log( debug => 'read_UDP triggered' );
 
@@ -132,7 +144,7 @@ use IO::Socket::INET;
         ### FIXME - add a timer here to break the loop after a pre-determined
         ### length of time to prevent DoS
 
-        while ( my $clientpaddr = $sock->recv( my $raw_msg, UDP_MAX_MSG_LEN ) )
+        while ( my $clientpaddr = $self->get_socket->recv( my $raw_msg, UDP_MAX_MSG_LEN ) )
         {
 
             $packet_received = 1;
@@ -149,7 +161,7 @@ use IO::Socket::INET;
                 return $packet_received;
             }
             
-            process_msg( $raw_msg );
+            $self->process_msg( $raw_msg );
         }
 
         return $packet_received;
@@ -171,7 +183,7 @@ use IO::Socket::INET;
     );
     
     sub process_msg {
-        my $raw_msg = shift;
+        my ($self, $raw_msg) = @_;
 
     # Create a new msg object from the raw msg string
     # wrap in an eval to catch any croaks
@@ -195,12 +207,12 @@ use IO::Socket::INET;
         log( info => $ucp_method_name->{$method}
                 . " response received\n" );
         
-        return $handler->($msg_ref); 
+        return $handler->($self, $msg_ref); 
     };
 
     sub method_discover {
-        my $msg_ref = shift;
-        return add_client($msg_ref);
+        my ($self, $msg_ref) = @_;
+        return $self->add_client($msg_ref);
     };
                         
     sub method_get_ip {
@@ -231,7 +243,7 @@ use IO::Socket::INET;
     }
 
     sub send_discovery {
-        my ( $sock, $args_ref ) = @_;
+        my ($self, $args_ref) = @_;
 
         $args_ref = {} if ( !defined $args_ref );
 
@@ -242,23 +254,20 @@ use IO::Socket::INET;
             : UCP_METHOD_DISCOVER;
 
         # Empty the device list
-        $devices_ref = {};
+        $self->set_devices({});
 
         # Create a discovery msg
-        my $msg = Net::UDAP::MessageOut->new( { ucp_method => $ucp_method } );
+        my $msg_ref = Net::UDAP::MessageOut->new( { ucp_method => $ucp_method } );
 
         # send msg
-        if ($msg) {
-            my $destpaddr = sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
-            if ($destpaddr) {
-                return $sock->send( $msg->packed, 0, $destpaddr );
-            }
+        if ($msg_ref) {
+            $self->send_message( $msg_ref );
         }
         return;
     }
 
     sub send_get_ip {
-        my ( $sock, $args_ref ) = @_;
+        my ( $self, $args_ref ) = @_;
         $args_ref = {} if ( !defined $args_ref );
 
 	(exists $args_ref->{mac}) && (defined $args_ref->{mac}) or do {
@@ -275,16 +284,13 @@ use IO::Socket::INET;
 	};
 
         if ($msg_ref) {
-            my $destpaddr = sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
-            if ($destpaddr) {
-                return $sock->send( $msg_ref->packed, 0, $destpaddr );
-            }
+            $self->send_message( $msg_ref );
         }
         return;
     }
 
     sub send_set_ip {
-        my ( $sock, $args_ref ) = @_;
+        my ( $self, $args_ref ) = @_;
         $args_ref = {} if ( !defined $args_ref );
 
         (exists $args_ref->{mac}) && (defined $args_ref->{mac}) or do {
@@ -301,27 +307,10 @@ use IO::Socket::INET;
         };
 
         if ($msg_ref) {
-            my $destpaddr = sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
-            if ($destpaddr) {
-                return $sock->send( $msg_ref->packed, 0, $destpaddr );
-            }
+            $self->send_message( $msg_ref );
         }
         return;
 
-    }
-
-    sub get_devices {
-
-        # return the hash of clients
-        return $devices_ref;
-    }
-
-    sub get_device_list {
-        my @devices = ();
-        foreach my $device ( keys %{$devices_ref} ) {
-            push @devices, $devices_ref->{$device}->display_name();
-        }
-        return \@devices;
     }
 
 }
