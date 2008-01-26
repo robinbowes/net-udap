@@ -13,9 +13,12 @@ use Exporter qw(import);
 
 %EXPORT_TAGS
     = (
-    all => [qw( hexstr decode_hex encode_ip decode_ip encode_mac decode_mac )]
+    all => [qw( hexstr decode_hex encode_ip decode_ip encode_mac decode_mac detect_local_ip )]
     );
 Exporter::export_tags('all');
+
+use Net::UDAP::Log;
+use Socket;
 
 {
 
@@ -126,6 +129,46 @@ Exporter::export_tags('all');
             sprintf( join( q{}, '0x%0', int($width), 'x' ),
             unpack( 'n', $bytes ) );
     }
+}
+
+sub detect_local_ip {
+    
+	# This routine adapted from code used in SqueezeCenter
+        # 
+        # Thanks to trick from Bill Fenner, trying to use a UDP socket won't
+        # send any packets out over the network, but will cause the routing
+        # table to do a lookup, so we can find our address. Don't use a high
+        # level abstraction like IO::Socket, as it dies when connect() fails.
+        #
+        # time.nist.gov - though it doesn't really matter.
+        my $raddr = '192.43.244.18';
+        my $rport = 123;
+
+        my $proto = (getprotobyname('udp'))[2];
+        my $pname = (getprotobynumber($proto))[0];
+        my $sock  = Symbol::gensym();
+	my $localhost = INADDR_LOOPBACK;
+
+        my $iaddr = inet_aton($raddr) or do {
+                log( warn => "Couldn't call inet_aton($raddr) - falling back to $localhost");
+                return $localhost;
+        };
+
+        my $paddr = sockaddr_in($rport, $iaddr);
+
+        socket($sock, PF_INET, SOCK_DGRAM, $proto) || do {
+                log( warn => "Couldn't call socket(PF_INET, SOCK_DGRAM, \$proto) - falling back to $localhost");
+                return $localhost;
+        };
+
+        connect($sock, $paddr) || do {
+                log( warn => "Couldn't call connect() - falling back to $localhost");
+                return $localhost;
+        };
+
+        # Find my half of the connection
+        my ($port, $address) = sockaddr_in( (getsockname($sock))[0] );
+        return $address;
 }
 
 1;    # Magic true value required at end of module

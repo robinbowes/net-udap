@@ -23,12 +23,14 @@ use base qw(Class::Accessor);
 my %field_default = (
     socket	  => undef,
     devices	  => {},    # store devices in a hash
+    local_ip      => undef,
 );
 
 __PACKAGE__->follow_best_practice;
 __PACKAGE__->mk_accessors( keys %field_default );
 
 use IO::Socket;
+use IO::Select;
 
 {
 
@@ -40,6 +42,7 @@ use IO::Socket;
         my $self = bless {}, $class;
         
         $self->set_socket($self->create_socket);
+        $self->set_local_ip( detect_local_ip );
         return $self;
     }
     
@@ -50,12 +53,13 @@ use IO::Socket;
 
     sub create_socket {
         # Setup listening socket on UDAP port
-        return IO::Socket::INET->new(
+        my $sock = IO::Socket::INET->new(
             Proto     => 'udp',
             LocalPort => PORT_UDAP,
             Blocking  => 0,
             Broadcast => 1,
         );
+        return $sock;
         # May need to set non-blocking a different way, depending on
         # whether or not the std method works on Windows
         # This is how SC does it:
@@ -66,16 +70,25 @@ use IO::Socket;
         #};
     }
     
-    sub send_message {
+    sub send_msg {
         my ( $self, $msg_ref ) = @_;
         
         my $sock = $self->get_socket;
-        my $dest = pack_sockaddr_in(PORT_UDAP, INADDR_BROADCAST);
+        #my $dest_ip = '192.168.1.255';
+        #my $dest = pack_sockaddr_in(PORT_UDAP, inet_aton($dest_ip));
         my $dest_ip = inet_ntoa( INADDR_BROADCAST );
+        my $dest = pack_sockaddr_in(PORT_UDAP, INADDR_BROADCAST);
         my $ucp_method = $msg_ref->get_ucp_method;
-        log( info => 'Broadcasting ' . $ucp_method_name->{$ucp_method} . "message on $dest_ip\n" );
+        log( info => 'Broadcasting ' . $ucp_method_name->{$ucp_method} . " message on $dest_ip\n" );
         $sock->send($msg_ref->packed, 0, $dest);
         return;
+    }
+    
+    sub recv_msg {
+        my $self = shift;
+        return unless my $clientpaddr = $self->get_socket->recv( my $raw_msg, UDP_MAX_MSG_LEN );
+        log( debug => 'msg received' );
+        return ($clientpaddr, $raw_msg);
     }
     
     sub add_client {
@@ -83,7 +96,7 @@ use IO::Socket;
         if ($msg_ref) {
             my $mac = decode_mac( $msg_ref->{src_mac} );
             if ($mac) {
-                my $client_params_ref = unpack_msg_to_client($msg_ref);
+                my $client_params_ref = $self->unpack_msg_to_client($msg_ref);
                 $self->get_devices->{$mac}
                     = Net::UDAP::Client->new($client_params_ref);
             }
@@ -99,7 +112,7 @@ use IO::Socket;
     }
 
     sub unpack_msg_to_client {
-        my $msg_ref = shift;
+        my ($self, $msg_ref) = @_;
 
         $msg_ref = {} if ( !defined $msg_ref );
 
@@ -123,25 +136,20 @@ use IO::Socket;
         log( debug => 'read_UDP triggered' );
 
         my $packet_received = 0;
+        my $local_ip = $self->get_local_ip;
+        my $local_ip_a = inet_ntoa($local_ip);
+        log( info => "local ip: $local_ip_a\n");
 
-        ### FIXME - add a timer here to break the loop after a pre-determined
-        ### length of time to prevent it hanging if there's no data to read first time
-        ### through the loop
-
-        while ( my $clientpaddr = $self->get_socket->recv( my $raw_msg, UDP_MAX_MSG_LEN ) )
-        {
-
+        while (my ( $clientpaddr, $raw_msg ) = $self->recv_msg) {;
+            
             $packet_received = 1;
-
+            
             # get src port and src IP
             my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
-
+            
             # Don't process packets we sent
-            ### FIXME
-            # Will need to tweak this code when the clients start
-            # sending packets with non-zero IP address
-            if ( $src_ip ne IP_ZERO ) {
-                log( info => 'Ignoring packet with non-zero IP address' );
+            if ( $src_ip eq $local_ip ) {
+                log( info => 'Ignoring packet sent from this machine' );
                 return $packet_received;
             }
             
@@ -189,7 +197,7 @@ use IO::Socket;
             croak('ucp_method invalid or not defined.');       
 
         log( info => $ucp_method_name->{$method}
-                . " response received\n" );
+                . " response processed\n" );
         
         return $handler->($self, $msg_ref); 
     };
@@ -252,7 +260,7 @@ use IO::Socket;
 
         # send msg
         if ($msg_ref) {
-            $self->send_message( $msg_ref );
+            $self->send_msg( $msg_ref );
         }
         return;
     }
@@ -275,7 +283,7 @@ use IO::Socket;
 	};
 
         if ($msg_ref) {
-            $self->send_message( $msg_ref );
+            $self->send_msg( $msg_ref );
         }
         return;
     }
@@ -298,7 +306,7 @@ use IO::Socket;
         };
 
         if ($msg_ref) {
-            $self->send_message( $msg_ref );
+            $self->send_msg( $msg_ref );
         }
         return;
 

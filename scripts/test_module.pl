@@ -52,17 +52,20 @@ $udap->send_discovery({advanced => 1});
 # readUDP returns true if it processed a packet
 # We need to repeatedly read packets until none are left
 while ( $udap->read_UDP ) { }
+#$udap->read_UDP;
 
 # Get the hash of discovered devices
 my $discovered_devices_ref = $udap->get_devices;
 
-print "Discovered devices:\n" . Dumper \$discovered_devices_ref;
+if ($discovered_devices_ref) {
 
-# set DHCP networking for each of the discovered devices
-foreach my $device ( values %{$discovered_devices_ref} ) {
-    #Net::UDAP::set_ip( {socket => $sock, device => $device} );
-    print 'Device mac: ' . $device->get_mac . "\n";
-    $udap->send_get_ip( { mac => $device->get_mac } );
+    print Dumper \$discovered_devices_ref;
+    # set DHCP networking for each of the discovered devices
+    foreach my $device ( values %{$discovered_devices_ref} ) {
+        #Net::UDAP::set_ip( {socket => $sock, device => $device} );
+        print 'Device mac: ' . $device->get_mac . "\n";
+        $udap->send_get_ip( { mac => $device->get_mac } );
+    }
 }
 
 # Set the IP and wireless information for the first device
