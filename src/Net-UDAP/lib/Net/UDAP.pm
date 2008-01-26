@@ -29,7 +29,6 @@ __PACKAGE__->follow_best_practice;
 __PACKAGE__->mk_accessors( keys %field_default );
 
 use IO::Socket;
-use IO::Interface qw{:flags};
 
 {
 
@@ -53,7 +52,6 @@ use IO::Interface qw{:flags};
         # Setup listening socket on UDAP port
         return IO::Socket::INET->new(
             Proto     => 'udp',
-#            LocalAddr => '0.0.0.0', 
             LocalPort => PORT_UDAP,
             Blocking  => 0,
             Broadcast => 1,
@@ -72,26 +70,11 @@ use IO::Interface qw{:flags};
         my ( $self, $msg_ref ) = @_;
         
         my $sock = $self->get_socket;
+        my $dest = pack_sockaddr_in(PORT_UDAP, INADDR_BROADCAST);
+        my $dest_ip = inet_ntoa( INADDR_BROADCAST );
         my $ucp_method = $msg_ref->get_ucp_method;
-        my $dest_mac = $msg_ref->get_dst_mac;
-        
-        my $dest_ip = '255.255.255.255';
-        my $dest = pack_sockaddr_in(PORT_UDAP, inet_aton($dest_ip));
-        log( info => "sending broadcast message on $dest_ip\n" );
+        log( info => 'Broadcasting ' . $ucp_method_name->{$ucp_method} . "message on $dest_ip\n" );
         $sock->send($msg_ref->packed, 0, $dest);
-        # send as a broadcast msg
-        #for my $if ($sock->if_list) {
-        #    next unless ($sock->if_flags($if) & (IFF_BROADCAST | IFF_RUNNING | IFF_UP));
-        #    my $dest_ip = $sock->if_broadcast($if);
-        #    if ($dest_ip) {
-        #        log( info => "Broadcast message on $dest_ip\n" );
-        #        #my $dest = pack_sockaddr_in(PORT_UDAP, inet_aton($dest_ip));
-        #        my $dest = pack_sockaddr_in(PORT_UDAP, inet_aton('255.255.255.255'));
-        #        $sock->send($msg_ref->packed, 0, $dest);
-        #    } else {
-        #        log( user => $if . " is capable of broadcasting but return no broadcast:\n" );
-        #    }
-        #}
         return;
     }
     
@@ -142,7 +125,8 @@ use IO::Interface qw{:flags};
         my $packet_received = 0;
 
         ### FIXME - add a timer here to break the loop after a pre-determined
-        ### length of time to prevent DoS
+        ### length of time to prevent it hanging if there's no data to read first time
+        ### through the loop
 
         while ( my $clientpaddr = $self->get_socket->recv( my $raw_msg, UDP_MAX_MSG_LEN ) )
         {
@@ -216,29 +200,36 @@ use IO::Interface qw{:flags};
     };
                         
     sub method_get_ip {
+        my ($self, $msg_ref) = @_;
         return;
     };
 
     sub method_set_ip {
+        my ($self, $msg_ref) = @_;
         return;
     };
 
     sub method_reset {
+        my ($self, $msg_ref) = @_;
         return
     };
 
     sub method_get_data {
+        my ($self, $msg_ref) = @_;
         return;
     };
 
     sub method_set_data {
+        my ($self, $msg_ref) = @_;
         return;
     };
     sub method_error {
+        my ($self, $msg_ref) = @_;
         return;
     };
     
     sub method_credentials_error {
+        my ($self, $msg_ref) = @_;
         return;
     }
 
