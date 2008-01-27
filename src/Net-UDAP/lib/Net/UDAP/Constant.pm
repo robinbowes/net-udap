@@ -18,7 +18,7 @@ use Exporter qw(import);
     DHCP      => [qw( DHCP_OFF DHCP_ON )],
     NETWORK   => [qw( DST_TYPE_ETH IP_ZERO MAC_ZERO PORT_UDAP PORT_ZERO )],
     HASHES    => [
-        qw( $name_from_offset $length_from_name $offset_from_name $ucp_method_name $ucp_code_param_name)
+        qw( $name_from_offset $length_from_name $offset_from_name $unpack_from_name $ucp_method_name $ucp_code_param_name)
     ],
     UCP_CODES => [
         qw( UCP_CODE_ZERO UCP_CODE_ONE UCP_CODE_DEVICE_NAME UCP_CODE_DEVICE_TYPE UCP_CODE_USE_DHCP UCP_CODE_IP_ADDR UCP_CODE_SUBNET_MASK UCP_CODE_GATEWAY_ADDR UCP_CODE_EIGHT UCP_CODE_FIRMWARE_REV UCP_CODE_HARDWARE_REV UCP_CODE_DEVICE_ID UCP_CODE_DEVICE_STATUS UCP_CODE_UUID )
@@ -54,6 +54,7 @@ Exporter::export_tags('all');
 our $name_from_offset = {};
 our $length_from_name = {};
 our $offset_from_name = {};
+our $unpack_from_name = {};
 our $ucp_method_name  = {};
 our $ucp_code_param_name = {};
 
@@ -64,15 +65,15 @@ use constant ADDR_TYPE_UDP   => pack( 'CC', 0x00, 0x02 );
 use constant ADDR_TYPE_THREE => pack( 'CC', 0x00, 0x03 );
 
 # Broadcast
-use constant BROADCAST_OFF => 0;
-use constant BROADCAST_ON  => 1;
+use constant BROADCAST_OFF => pack( 'C', 0x00 );
+use constant BROADCAST_ON  => pack( 'C', 0x01 );
 
 # DHCP
 use constant DHCP_OFF => 0;
 use constant DHCP_ON  => 1;
 
 # Network stuff
-use constant DST_TYPE_ETH => 0x01;
+use constant DST_TYPE_ETH => pack( 'C', 0x01 );
 use constant IP_ZERO      => pack( 'C4', (0x00) x 4 );
 use constant MAC_ZERO     => pack( 'C6', (0x00) x 6 );
 use constant PORT_UDAP    => 0x4578;                     # port no. 17784
@@ -183,41 +184,44 @@ use constant UDP_MAX_MSG_LEN => 1500;
 {
     my @parameter_data = (
 
-        # name, offset, length
-        'lan_ip_mode',            4,   1,
-        'lan_network_address',    5,   4,
-        'lan_subnet_mask',        9,   4,
-        'lan_gateway',            13,  4,
-        'hostname',               17,  33,
-        'bridging',               50,  1,
-        'interface',              52,  1,
-        'primary_dns',            59,  4,
-        'secondary_dns',          67,  4,
-        'server_address',         71,  4,
-        'slimserver_address',     79,  4,
-        'slimserver_name',        83,  33,
-        'wireless.wireless_mode', 173, 1,
-        'wireless.SSID',          183, 33,
-        'wireless.channel',       216, 1,
-        'wireless.region_id',     218, 1,
-        'wireless.keylen',        220, 1,
-        'wireless.wep_key[0]',    222, 13,
-        'wireless.wep_key[1]',    235, 13,
-        'wireless.wep_key[2]',    248, 13,
-        'wireless.wep_key[3]',    261, 13,
-        'wireless.wepon',         274, 1,
-        'wireless.wpa_cipher',    275, 1,
-        'wireless.wpa_mode',      276, 1,
-        'wireless.wpa_enabled',   277, 1,
-        'wireless.wpa_psk',       278, 64,
+        # name, offset, length, sub to unpack
+        'lan_ip_mode',            4,   1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'lan_network_address',    5,   4,   \&Socket::inet_ntoa,
+        'lan_subnet_mask',        9,   4,   \&Socket::inet_ntoa,
+        'lan_gateway',            13,  4,   \&Socket::inet_ntoa,
+        'hostname',               17,  33,  sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        'bridging',               50,  1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'interface',              52,  1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'primary_dns',            59,  4,   \&Socket::inet_ntoa,
+        'secondary_dns',          67,  4,   \&Socket::inet_ntoa,
+        'server_address',         71,  4,   \&Socket::inet_ntoa,
+        'slimserver_address',     79,  4,   \&Socket::inet_ntoa,
+        'slimserver_name',        83,  33,  sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        'wireless.wireless_mode', 173, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'wireless.SSID',          183, 33,  sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        'wireless.channel',       216, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'wireless.region_id',     218, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'wireless.keylen',        220, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'wireless.wep_key[0]',    222, 13,  sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        'wireless.wep_key[1]',    235, 13,  sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        'wireless.wep_key[2]',    248, 13,  sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        'wireless.wep_key[3]',    261, 13,  sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        'wireless.wepon',         274, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'wireless.wpa_cipher',    275, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'wireless.wpa_mode',      276, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'wireless.wpa_enabled',   277, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        'wireless.wpa_psk',       278, 64,  sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
     );
+    
     while (@parameter_data) {
         my $param_name   = shift @parameter_data;
         my $param_offset = shift @parameter_data;
         my $param_length = shift @parameter_data;
+        my $param_unpack = shift @parameter_data;
         $name_from_offset->{$param_offset} = $param_name;
         $length_from_name->{$param_name}   = $param_length;
         $offset_from_name->{$param_name}   = $param_offset;
+        $unpack_from_name->{$param_name}   = $param_unpack;
     }
 }
 

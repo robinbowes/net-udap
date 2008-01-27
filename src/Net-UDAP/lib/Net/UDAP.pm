@@ -70,18 +70,125 @@ use IO::Select;
         #};
     }
     
+    sub send_discovery {
+        my ($self, $args_ref) = @_;
+
+        $args_ref = {} if ( !defined $args_ref );
+
+        # pass { advanced => 1 } to use advanced discovery
+        my $ucp_method
+            = ( $args_ref->{advanced} )
+            ? UCP_METHOD_ADV_DISCOVER
+            : UCP_METHOD_DISCOVER;
+
+        # Empty the device list
+        $self->set_devices({});
+
+        # Create a discovery msg
+        my $msg_ref = Net::UDAP::MessageOut->new( { ucp_method => $ucp_method } );
+
+        # send msg
+        if ($msg_ref) {
+            $self->send_msg( $msg_ref );
+            $self->read_responses;
+        }
+        return;
+    }
+
+    sub send_get_ip {
+        my ( $self, $args_ref ) = @_;
+        $args_ref = {} if ( !defined $args_ref );
+
+	(exists $args_ref->{mac}) && (defined $args_ref->{mac}) or do {
+	    croak ('Must specify mac for get_ip');
+	};
+
+	my $encoded_mac = encode_mac($args_ref->{mac});
+        
+	my $msg_ref;
+        eval { $msg_ref = Net::UDAP::MessageOut->new(
+            { ucp_method => UCP_METHOD_GET_IP,
+              dst_mac => $encoded_mac,
+            } ) } or do {
+	    carp($@);
+	    return;
+	};
+
+        if ($msg_ref) {
+            $self->send_msg( $msg_ref );
+            $self->read_responses;
+        }
+        return;
+    }
+    
+    sub read_responses {
+        my ($self) = @_;
+        while( $self->read_UDP ) {};
+        return;
+    }
+
+    sub send_set_ip {
+        my ( $self, $args_ref ) = @_;
+        $args_ref = {} if ( !defined $args_ref );
+
+        (exists $args_ref->{mac}) && (defined $args_ref->{mac}) or do {
+            croak ('Must specify mac for set_ip');
+        };
+
+        my $encoded_mac = encode_mac($args_ref->{mac});
+
+        my $msg_ref;
+        eval { $msg_ref = Net::UDAP::MessageOut->new(
+            { ucp_method => UCP_METHOD_SET_IP,
+              dst_mac    => $encoded_mac,
+            } ) } or do {
+            carp($@);
+            return;
+        };
+
+        if ($msg_ref) {
+            $self->send_msg( $msg_ref );
+            $self->read_responses;
+        }
+        return;
+
+    }
+    
+    sub send_get_data {
+        my ( $self, $args_ref ) = @_;
+        $args_ref = {} if (!defined $args_ref );
+        
+        (exists $args_ref->{mac}) && (defined $args_ref->{mac}) or do {
+            croak ('Must specify mac for get_data');
+        };        
+        
+        my $encoded_mac = encode_mac($args_ref->{mac});
+
+        my $msg_ref;
+        eval { $msg_ref = Net::UDAP::MessageOut->new(
+            { ucp_method => UCP_METHOD_GET_DATA,
+              dst_mac    => $encoded_mac,
+              data       => $args_ref->{data},
+            } ) } or do {
+            carp($@);
+            return;
+        };
+
+        if ($msg_ref) {
+            $self->send_msg( $msg_ref );
+            $self->read_responses;
+        }
+        return;
+    }
     sub send_msg {
         my ( $self, $msg_ref ) = @_;
         
         my $sock = $self->get_socket;
-        #my $dest_ip = '192.168.1.255';
-        #my $dest = pack_sockaddr_in(PORT_UDAP, inet_aton($dest_ip));
         my $dest_ip = inet_ntoa( INADDR_BROADCAST );
         my $dest = pack_sockaddr_in(PORT_UDAP, INADDR_BROADCAST);
         my $ucp_method = $msg_ref->get_ucp_method;
         log( info => 'Broadcasting ' . $ucp_method_name->{$ucp_method} . " message on $dest_ip\n" );
-        $sock->send($msg_ref->packed, 0, $dest);
-        return;
+        return $sock->send($msg_ref->packed, 0, $dest);
     }
     
     sub recv_msg {
@@ -91,44 +198,6 @@ use IO::Select;
         return ($clientpaddr, $raw_msg);
     }
     
-    sub add_client {
-        my ($self, $msg_ref) = @_;
-        if ($msg_ref) {
-            my $mac = decode_mac( $msg_ref->{src_mac} );
-            if ($mac) {
-                my $client_params_ref = $self->unpack_msg_to_client($msg_ref);
-                $self->get_devices->{$mac}
-                    = Net::UDAP::Client->new($client_params_ref);
-            }
-            else {
-                carp('mac not found in msg');
-                return;
-            }
-        }
-        else {
-            carp('msg not defined');
-            return;
-        }
-    }
-
-    sub unpack_msg_to_client {
-        my ($self, $msg_ref) = @_;
-
-        $msg_ref = {} if ( !defined $msg_ref );
-
-        my $client_params_ref = {};
-
-        $client_params_ref->{mac} = decode_mac( $msg_ref->{src_mac} );
-
-        # unpack data to client
-        foreach my $data_key ( keys %{ $msg_ref->{data_ref} } ) {
-            $client_params_ref->{ $ucp_code_param_name->{$data_key} }
-                = $msg_ref->{data_ref}->{$data_key}{data};
-        }
-
-        return $client_params_ref;
-
-    }
 
     sub read_UDP {
         my $self = shift;
@@ -196,120 +265,111 @@ use IO::Select;
         my $handler = $METHOD{$method} ||
             croak('ucp_method invalid or not defined.');       
 
-        log( info => $ucp_method_name->{$method}
-                . " response processed\n" );
-        
         return $handler->($self, $msg_ref); 
     };
 
     sub method_discover {
         my ($self, $msg_ref) = @_;
+        log( info => 'discover response received');
         return $self->add_client($msg_ref);
     };
                         
     sub method_get_ip {
         my ($self, $msg_ref) = @_;
+        log( info => 'get_ip response received');
         return;
     };
 
     sub method_set_ip {
         my ($self, $msg_ref) = @_;
+        log( info => 'set_ip response received');
         return;
     };
 
     sub method_reset {
         my ($self, $msg_ref) = @_;
+        log( info => 'reset response received');
         return
     };
 
     sub method_get_data {
         my ($self, $msg_ref) = @_;
+        log( info => 'get_data response received');
+        return( $self->update_client( $msg_ref) );
         return;
     };
 
     sub method_set_data {
         my ($self, $msg_ref) = @_;
+        log( info => 'set_data response received');
         return;
     };
     sub method_error {
         my ($self, $msg_ref) = @_;
+        log( info => 'error response received');
         return;
     };
     
     sub method_credentials_error {
         my ($self, $msg_ref) = @_;
+        log( info => 'credentials_error response received');
         return;
     }
 
-    sub send_discovery {
-        my ($self, $args_ref) = @_;
-
-        $args_ref = {} if ( !defined $args_ref );
-
-        # pass { advanced => 1 } to use advanced discovery
-        my $ucp_method
-            = ( $args_ref->{advanced} )
-            ? UCP_METHOD_ADV_DISCOVER
-            : UCP_METHOD_DISCOVER;
-
-        # Empty the device list
-        $self->set_devices({});
-
-        # Create a discovery msg
-        my $msg_ref = Net::UDAP::MessageOut->new( { ucp_method => $ucp_method } );
-
-        # send msg
+    sub add_client {
+        my ($self, $msg_ref) = @_;
         if ($msg_ref) {
-            $self->send_msg( $msg_ref );
+            my $mac = decode_mac( $msg_ref->{src_mac} );
+            if ($mac) {
+                my $client_params_ref = $self->unpack_msg_to_client($msg_ref);
+                $self->get_devices->{$mac}
+                    = Net::UDAP::Client->new($client_params_ref);
+            }
+            else {
+                carp('mac not found in msg');
+                return;
+            }
         }
-        return;
-    }
-
-    sub send_get_ip {
-        my ( $self, $args_ref ) = @_;
-        $args_ref = {} if ( !defined $args_ref );
-
-	(exists $args_ref->{mac}) && (defined $args_ref->{mac}) or do {
-	    croak ('Must specify mac for get_ip');
-	};
-
-	my $encoded_mac = encode_mac($args_ref->{mac});
-
-	my $msg_ref;
-        eval { $msg_ref = Net::UDAP::MessageOut->new(
-            { ucp_method => UCP_METHOD_GET_IP, dst_mac => $encoded_mac } ) } or do {
-	    carp($@);
-	    return;
-	};
-
-        if ($msg_ref) {
-            $self->send_msg( $msg_ref );
-        }
-        return;
-    }
-
-    sub send_set_ip {
-        my ( $self, $args_ref ) = @_;
-        $args_ref = {} if ( !defined $args_ref );
-
-        (exists $args_ref->{mac}) && (defined $args_ref->{mac}) or do {
-            croak ('Must specify mac for set_ip');
-        };
-
-        my $encoded_mac = encode_mac($args_ref->{mac});
-
-        my $msg_ref;
-        eval { $msg_ref = Net::UDAP::MessageOut->new(
-            { ucp_method => UCP_METHOD_SET_IP, dst_mac => $encoded_mac,  } ) } or do {
-            carp($@);
+        else {
+            carp('msg not defined');
             return;
-        };
-
-        if ($msg_ref) {
-            $self->send_msg( $msg_ref );
         }
-        return;
+    }
+    
+    sub update_client {
+        my ($self, $msg_ref) = @_;
+        if ($msg_ref) {
+            my $mac = decode_mac( $msg_ref->{src_mac});
+            if ($mac) {
+                my $client_params_ref = $self->unpack_msg_to_client($msg_ref);
+                $self->get_devices->{$mac}->update($client_params_ref);
+            }
+        }
+    }
 
+    sub unpack_msg_to_client {
+        my ($self, $msg_ref) = @_;
+
+        $msg_ref = {} if ( !defined $msg_ref );
+
+        my $client_params_ref = {};
+
+        $client_params_ref->{mac} = decode_mac( $msg_ref->{src_mac} );
+
+        # unpack discovery data to client param hash
+        foreach my $data_key ( keys %{ $msg_ref->get_discovery_data_ref } ) {
+            $client_params_ref->{ $ucp_code_param_name->{$data_key} }
+                = $msg_ref->get_discovery_data_ref->{$data_key}{data};
+        }
+        
+        # unpack get_data data to client param hash
+        foreach my $param ( keys %{ $msg_ref->get_param_data_ref } ) {
+            $client_params_ref->{ $param } = (defined $unpack_from_name->{$param}) ?
+               $unpack_from_name->{$param}->( $msg_ref->get_param_data_ref->{$param} )
+               : $msg_ref->get_param_data_ref->{$param};
+        }
+        
+        return $client_params_ref;
     }
 
 }

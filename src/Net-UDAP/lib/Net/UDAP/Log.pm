@@ -15,7 +15,7 @@ Exporter::export_tags('all');
 
 use Log::StdLog {
     handle => *STDERR,
-    level  => 'debug',
+    level  => 'info',
     format => \&std_log_format,
 };
 

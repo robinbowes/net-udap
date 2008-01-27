@@ -28,6 +28,8 @@ my %fields_default = (
     ucp_flags  => pack( 'C', 0x01 ),      # unused?
     ucp_class  => UAP_CLASS_UCP,
     ucp_method => undef,
+    credentials => pack( 'C32', 0x00 x 32 ),
+    data       => [],   # store data as an ref to an anon array of param names
 );
 
 __PACKAGE__->follow_best_practice;
@@ -75,7 +77,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             }
 
             ( $method eq UCP_METHOD_GET_IP ) && do {
-
+                # nothing further to do for get_ip
                 last SWITCH;
             };
 
@@ -92,12 +94,12 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             };
 
             ( $method eq UCP_METHOD_GET_DATA ) && do {
-
+                # valid data
                 last SWITCH;
             };
 
             ( $method eq UCP_METHOD_SET_DATA ) && do {
-
+                
                 last SWITCH;
             };
 
@@ -123,7 +125,25 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         $str    .= $self->get_udap_type;
         $str    .= $self->get_ucp_flags;
         $str    .= $self->get_ucp_class;
-        $str    .= $self->get_ucp_method;
+        
+        my $method = $self->get_ucp_method;
+        $str    .= $method;
+        
+    SWITCH: {
+        ( ($method eq UCP_METHOD_GET_DATA)
+    or    ($method eq UCP_METHOD_SET_DATA)) && do {
+            
+            $str .= $self->get_credentials;
+            $str .= pack( 'n', scalar @{$self->get_data} );
+            foreach my $param_name (@{$self->get_data}) {
+                if (exists $offset_from_name->{$param_name}) {
+                    $str .= pack('n', $offset_from_name->{$param_name});
+                    $str .= pack('n', $length_from_name->{$param_name});
+                }
+            }
+            last SWITCH;
+        }
+    }
 
         return $str;
     }

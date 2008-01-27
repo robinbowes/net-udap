@@ -12,6 +12,7 @@ use version; our $VERSION = qv('0.1');
 
 use Net::UDAP::Constant;
 use Net::UDAP::Util;
+use Net::UDAP::Log;
 
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
@@ -31,8 +32,10 @@ my %field_default = (
     ucp_flags     => undef,
     uap_class     => undef,
     ucp_method    => undef,
-    data_ref	  => {},    # store msg data as a hash ref.
-			    # the hash is: { data_length => ?, data => ? ]
+    discovery_data_ref	  => {},    # store data returned from discovery as hash ref.
+			    # $discovery_data_ref->{ucp_code} = { data_length => ?, data => ? }
+    param_data_ref	  => {},    # store data returned from get_data as hash ref.
+			    # $param_data_ref->{param_name} = "data string"
 );
 
 __PACKAGE__->follow_best_practice;
@@ -170,13 +173,47 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
 		}
 
-		$self->set_data_ref( $data_ref );
+		$self->set_discovery_data_ref( $data_ref );
 
                 last SWITCH;
             };
 
-            () && do {
+            ( $self->get_ucp_method eq UCP_METHOD_GET_IP ) && do {
 
+                last SWITCH;
+            };
+            
+	    ( $self->get_ucp_method eq UCP_METHOD_GET_DATA ) && do {
+		# get number of data items
+		my $num_items = unpack( 'n', substr( $raw_msg, $os, 2 ));
+		$os += 2;
+		
+		log( debug=> "num_items: $num_items\n");
+		
+		my $param_data_ref = {};
+		
+		while ($os < length($raw_msg)) {
+		    #get offset
+		    my $param_offset = unpack('n', substr( $raw_msg, $os, 2));
+		    $os += 2;
+		    
+		    log( debug=> "param offset: $param_offset\n");
+		    
+		    #get length
+		    my $data_length = unpack('n', substr( $raw_msg, $os, 2));
+		    $os += 2;
+		    
+		    log( debug=> "data length: $data_length\n");
+		    
+		    #get string
+		    my $data_string = unpack( "a*", substr($raw_msg, $os, $data_length));
+		    $os += $data_length;
+		    
+		    log( debug=> "data string: $data_string\n");
+		    
+		    $param_data_ref->{$name_from_offset->{$param_offset}} = $data_string;
+		}
+		$self->set_param_data_ref( $param_data_ref );
                 last SWITCH;
             };
 

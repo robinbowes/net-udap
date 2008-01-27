@@ -88,13 +88,15 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         return $dname;
     }
 
-    sub set_ip {
-        my ( $caller, $args_ref ) = @_;
-        my $class = ref $caller || $caller;
-
-        # make sure $arg_ref is a hash ref
+    sub update {
+        my ( $self, $args_ref ) = @_;
         $args_ref = {} unless defined $args_ref;
-
+        
+        foreach my $param ( keys %{$args_ref}) {
+            $self->{$param} = $args_ref->{$param};
+        }
+        
+        return $self;
     }
 }
 

@@ -13,7 +13,7 @@ use Exporter qw(import);
 
 %EXPORT_TAGS
     = (
-    all => [qw( hexstr decode_hex encode_ip decode_ip encode_mac decode_mac detect_local_ip )]
+    all => [qw( hexstr decode_hex encode_mac decode_mac detect_local_ip )]
     );
 Exporter::export_tags('all');
 
@@ -21,7 +21,6 @@ use Net::UDAP::Log;
 use Socket;
 
 {
-
     sub decode_hex {
 
         # Decode a hex string of specified length into a human-readable string
@@ -44,39 +43,6 @@ use Socket;
             carp "Expecting string with length: $strlen";
             return undef;
         }
-    }
-
-    sub encode_ip {
-
-        # Encode a dotted-quad IP address into a 4-byte string
-        # $ip		- IP address in format xxx.xxx.xxx.xxx
-        my $ip = shift;
-        if ($ip =~ /
-		    \A		    # start of string
-		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
-		    [.]		    # period literal
-		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
-		    [.]		    # period literal
-		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
-		    [.]		    # period literal
-		    ( [0-9]{1,3} )  # match and capture between 1-3 digits
-		    /xms
-            )
-        {
-            return pack( 'C4', $1, $2, $3, $4 );
-        }
-        else {
-            carp "IP address \"$ip\" not in expected format (x.x.x.x)";
-            return undef;
-        }
-    }
-
-    sub decode_ip {
-
-        # Decode a 4-byte IP string into human-readable form
-        # $rawstr	- 4-byte hex string representing IP address
-        my $rawstr = shift;
-        return decode_hex( $rawstr, 4, 'C', '.' );
     }
 
     sub encode_mac {
