@@ -18,24 +18,25 @@ use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 my %field_default = (
-    raw_msg	  => undef,
-    dst_addr_type => undef,
-    dst_mac       => undef,
-    dst_ip        => undef,
-    dst_port      => undef,
-    src_addr_type => undef,
-    src_mac       => undef,
-    src_ip        => undef,
-    src_port      => undef,
-    seq           => undef,
-    udap_type     => undef,
-    ucp_flags     => undef,
-    uap_class     => undef,
-    ucp_method    => undef,
-    discovery_data_ref	  => {},    # store data returned from discovery as hash ref.
-			    # $discovery_data_ref->{ucp_code} = { data_length => ?, data => ? }
-    param_data_ref	  => {},    # store data returned from get_data as hash ref.
-			    # $param_data_ref->{param_name} = "data string"
+    raw_msg            => undef,
+    dst_addr_type      => undef,
+    dst_mac            => undef,
+    dst_ip             => undef,
+    dst_port           => undef,
+    src_addr_type      => undef,
+    src_mac            => undef,
+    src_ip             => undef,
+    src_port           => undef,
+    seq                => undef,
+    udap_type          => undef,
+    ucp_flags          => undef,
+    uap_class          => undef,
+    ucp_method         => undef,
+    discovery_data_ref => {}
+    ,    # store data returned from discovery as hash ref.
+         # $discovery_data_ref->{ucp_code} = { data_length => ?, data => ? }
+    param_data_ref => {},    # store data returned from get_data as hash ref.
+                             # $param_data_ref->{param_name} = "data string"
 );
 
 __PACKAGE__->follow_best_practice;
@@ -55,9 +56,9 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
         my $self = bless {%arg}, $class;
 
-	if (defined $self->get_raw_msg) {
-	    $self->udap_decode;
-	}
+        if ( defined $self->get_raw_msg ) {
+            $self->udap_decode;
+        }
         return $self;
     }
 
@@ -70,11 +71,11 @@ __PACKAGE__->mk_accessors( keys %field_default );
     sub udap_decode {
         my $self = shift;
 
-	my $raw_msg = $self->get_raw_msg;
+        my $raw_msg = $self->get_raw_msg;
 
-	(!defined $raw_msg) && do {
-	    croak('raw msg not set');
-	};
+        ( !defined $raw_msg ) && do {
+            croak('raw msg not set');
+        };
 
         # Initialise offset from start of raw string
         # This is incremented as we read characters from the string
@@ -147,73 +148,93 @@ __PACKAGE__->mk_accessors( keys %field_default );
         # Now, do different things depending on what packet type this is
     SWITCH: {
 
-            ( ( $self->get_ucp_method eq UCP_METHOD_DISCOVER ) or
-		( $self->get_ucp_method eq UCP_METHOD_ADV_DISCOVER ) ) && do {
+            (          ( $self->get_ucp_method eq UCP_METHOD_DISCOVER )
+                    or ( $self->get_ucp_method eq UCP_METHOD_ADV_DISCOVER )
+                )
+                && do {
 
-		# The rest of the packet is in the format:
-		#   ucp_code, length, data
+                # The rest of the packet is in the format:
+                #   ucp_code, length, data
 
-		my $data_ref = {};
+                my $data_ref = {};
 
-		while ($os < length($raw_msg) ) {
+                while ( $os < length($raw_msg) ) {
+
                     # get ucp code
                     my $ucp_code = substr( $raw_msg, $os, 1 );
                     $os += 1;
 
                     # length of following string
-                    my $data_length = unpack( 'c', substr( $raw_msg, $os, 1 ));
+                    my $data_length
+                        = unpack( 'c', substr( $raw_msg, $os, 1 ) );
                     $os += 1;
 
-		    # If the data is not present, $data_length will be 0
-                    my $data = ($data_length) ? substr( $raw_msg, $os, $data_length) : '';
-	            $os += $data_length;
+                    # If the data is not present, $data_length will be 0
+                    my $data
+                        = ($data_length)
+                        ? substr( $raw_msg, $os, $data_length )
+                        : '';
+                    $os += $data_length;
 
-		    # add to the data hash
-		    $data_ref->{$ucp_code} = { data_length => $data_length, data => $data };
+                    # add to the data hash
+                    if ( exists $ucp_code_name->{$ucp_code} ) {
+                        $data_ref->{ $ucp_code_name->{$ucp_code} }
+                            = $ucp_code_unpack->{$ucp_code}->($data);
+                    }
+                    else {
+                        log( warn => "Invalid ucp_code: [$ucp_code]\n" );
+                        return;
+                    }
+                }
 
-		}
-
-		$self->set_discovery_data_ref( $data_ref );
+                $self->set_discovery_data_ref($data_ref);
 
                 last SWITCH;
-            };
+                };
 
             ( $self->get_ucp_method eq UCP_METHOD_GET_IP ) && do {
 
                 last SWITCH;
             };
-            
-	    ( $self->get_ucp_method eq UCP_METHOD_GET_DATA ) && do {
-		# get number of data items
-		my $num_items = unpack( 'n', substr( $raw_msg, $os, 2 ));
-		$os += 2;
-		
-		log( debug=> "num_items: $num_items\n");
-		
-		my $param_data_ref = {};
-		
-		while ($os < length($raw_msg)) {
-		    #get offset
-		    my $param_offset = unpack('n', substr( $raw_msg, $os, 2));
-		    $os += 2;
-		    
-		    log( debug=> "param offset: $param_offset\n");
-		    
-		    #get length
-		    my $data_length = unpack('n', substr( $raw_msg, $os, 2));
-		    $os += 2;
-		    
-		    log( debug=> "data length: $data_length\n");
-		    
-		    #get string
-		    my $data_string = unpack( "a*", substr($raw_msg, $os, $data_length));
-		    $os += $data_length;
-		    
-		    log( debug=> "data string: $data_string\n");
-		    
-		    $param_data_ref->{$name_from_offset->{$param_offset}} = $data_string;
-		}
-		$self->set_param_data_ref( $param_data_ref );
+
+            ( $self->get_ucp_method eq UCP_METHOD_GET_DATA ) && do {
+
+                # get number of data items
+                my $num_items = unpack( 'n', substr( $raw_msg, $os, 2 ) );
+                $os += 2;
+
+                log( debug => "num_items: $num_items\n" );
+
+                my $param_data_ref = {};
+
+                while ( $os < length($raw_msg) ) {
+
+                    #get offset
+                    my $param_offset
+                        = unpack( 'n', substr( $raw_msg, $os, 2 ) );
+                    $os += 2;
+
+                    log( debug => "param offset: $param_offset\n" );
+
+                    #get length
+                    my $data_length
+                        = unpack( 'n', substr( $raw_msg, $os, 2 ) );
+                    $os += 2;
+
+                    log( debug => "data length: $data_length\n" );
+
+                    #get string
+                    my $data_string = unpack( "a*",
+                        substr( $raw_msg, $os, $data_length ) );
+                    $os += $data_length;
+
+                    log( debug => "data string: $data_string\n" );
+
+                    $param_data_ref->{ $name_from_offset->{$param_offset} }
+                        = $unpack_from_offset->{$param_offset}
+                        ->($data_string);
+                }
+                $self->set_param_data_ref($param_data_ref);
                 last SWITCH;
             };
 
@@ -225,7 +246,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
     }
 
 #    sub set_data {
-#	# 
+#	#
 #	my ($self, $args_ref) = @_;
 #
 #	$args_ref = {} if (!defined $args_ref);

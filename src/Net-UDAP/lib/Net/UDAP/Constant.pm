@@ -18,7 +18,7 @@ use Exporter qw(import);
     DHCP      => [qw( DHCP_OFF DHCP_ON )],
     NETWORK   => [qw( DST_TYPE_ETH IP_ZERO MAC_ZERO PORT_UDAP PORT_ZERO )],
     HASHES    => [
-        qw( $name_from_offset $length_from_name $offset_from_name $unpack_from_name $ucp_method_name $ucp_code_param_name)
+        qw( $name_from_offset $length_from_name $offset_from_name $unpack_from_offset $ucp_method_name $ucp_code_name $ucp_code_unpack )
     ],
     UCP_CODES => [
         qw( UCP_CODE_ZERO UCP_CODE_ONE UCP_CODE_DEVICE_NAME UCP_CODE_DEVICE_TYPE UCP_CODE_USE_DHCP UCP_CODE_IP_ADDR UCP_CODE_SUBNET_MASK UCP_CODE_GATEWAY_ADDR UCP_CODE_EIGHT UCP_CODE_FIRMWARE_REV UCP_CODE_HARDWARE_REV UCP_CODE_DEVICE_ID UCP_CODE_DEVICE_STATUS UCP_CODE_UUID )
@@ -36,7 +36,7 @@ use Exporter qw(import);
     WLAN_WPA => [
         qw( WLAN_WPA_CIPHER_CCMP WLAN_WPA_CIPHER_TKIP WLAN_WPA_OFF WLAN_WPA_ON WLAN_WPA_MODE_WPA WLAN_WPA_MODE_WPA2 )
     ],
-    MISC => [qw(  UDP_MAX_MSG_LEN UDAP_TYPE_UCP UAP_CLASS_UCP )],
+    MISC => [qw(  UDP_MAX_MSG_LEN UDAP_TIMEOUT UDAP_TYPE_UCP UAP_CLASS_UCP )],
 );
 
 # add all the other ":class" tags to the ":all" class,
@@ -54,9 +54,10 @@ Exporter::export_tags('all');
 our $name_from_offset = {};
 our $length_from_name = {};
 our $offset_from_name = {};
-our $unpack_from_name = {};
+our $unpack_from_offset = {};
 our $ucp_method_name  = {};
-our $ucp_code_param_name = {};
+our $ucp_code_name = {};
+our $ucp_code_unpack = {};
 
 # Address Types
 use constant ADDR_TYPE_RAW   => pack( 'CC', 0x00, 0x00 );
@@ -100,25 +101,6 @@ use constant UCP_CODE_HARDWARE_REV  => pack( 'C', 0x0a );
 use constant UCP_CODE_DEVICE_ID     => pack( 'C', 0x0b );
 use constant UCP_CODE_DEVICE_STATUS => pack( 'C', 0x0c );
 use constant UCP_CODE_UUID          => pack( 'C', 0x0d );
-
-# lookup hash mapping ucp_code constants to the client
-# parameter in which the data is stored
-$ucp_code_param_name = {
-    UCP_CODE_ZERO,          undef,
-    UCP_CODE_ONE,           undef,
-    UCP_CODE_DEVICE_NAME,   'hostname',
-    UCP_CODE_DEVICE_TYPE,   'device_type',
-    UCP_CODE_USE_DHCP,      'lan_ip_mode',
-    UCP_CODE_IP_ADDR,       'lan_network_address',
-    UCP_CODE_SUBNET_MASK,   'lan_subnet_mask',
-    UCP_CODE_GATEWAY_ADDR,  'lan_gateway',
-    UCP_CODE_EIGHT,         undef,
-    UCP_CODE_FIRMWARE_REV,  'firmware_rev',
-    UCP_CODE_HARDWARE_REV,  'hardware_rev',
-    UCP_CODE_DEVICE_ID,     'device_id',
-    UCP_CODE_DEVICE_STATUS, 'device_status',
-    UCP_CODE_UUID,          'uuid',
-};
 
 # UCP methods
 use constant UCP_METHOD_ZERO              => pack( 'CC', 0x00, 0x00 );
@@ -177,8 +159,9 @@ use constant WLAN_WPA_MODE_WPA    => pack( 'C', 0x01 );
 use constant WLAN_WPA_MODE_WPA2   => pack( 'C', 0x02 );
 
 # Misc constants
-use constant UDAP_TYPE_UCP => pack( 'C2', 0xC0, 0x01 );
 use constant UAP_CLASS_UCP => pack( 'C4', 0x00, 0x01, 0x00, 0x01 );
+use constant UDAP_TIMEOUT  => 1;
+use constant UDAP_TYPE_UCP => pack( 'C2', 0xC0, 0x01 );
 use constant UDP_MAX_MSG_LEN => 1500;
 
 {
@@ -221,8 +204,36 @@ use constant UDP_MAX_MSG_LEN => 1500;
         $name_from_offset->{$param_offset} = $param_name;
         $length_from_name->{$param_name}   = $param_length;
         $offset_from_name->{$param_name}   = $param_offset;
-        $unpack_from_name->{$param_name}   = $param_unpack;
+        $unpack_from_offset->{$param_offset}   = $param_unpack;
     }
+
+    my @ucp_code_data = (
+    
+    # constant, name, sub to unpack
+    #    UCP_CODE_ZERO,          undef,
+    #    UCP_CODE_ONE,           undef,
+        UCP_CODE_DEVICE_NAME,   'hostname',     sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        UCP_CODE_DEVICE_TYPE,   'device_type',  sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        UCP_CODE_USE_DHCP,      'lan_ip_mode',  sub{ my ($str) = @_; return unpack( 'n', $str ) },
+        UCP_CODE_IP_ADDR,       'lan_network_address',  \&Socket::inet_ntoa,
+        UCP_CODE_SUBNET_MASK,   'lan_subnet_mask',  \&Socket::inet_ntoa,
+        UCP_CODE_GATEWAY_ADDR,  'lan_gateway',  \&Socket::inet_ntoa,
+    #    UCP_CODE_EIGHT,         undef,
+        UCP_CODE_FIRMWARE_REV,  'firmware_rev',     sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        UCP_CODE_HARDWARE_REV,  'hardware_rev',     sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        UCP_CODE_DEVICE_ID,     'device_id',     sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        UCP_CODE_DEVICE_STATUS, 'device_status',     sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+        UCP_CODE_UUID,          'uuid',     sub{ my ($str) = @_; return unpack( 'a' x length($str), $str ) },
+    );
+    
+    while (@ucp_code_data) {
+        my $code = shift @ucp_code_data;   
+        my $code_name = shift @ucp_code_data;   
+        my $code_unpack = shift @ucp_code_data;
+        $ucp_code_name->{ $code } = $code_name;
+        $ucp_code_unpack->{ $code } = $code_unpack;
+    }
+
 }
 
 1;    # Magic true value required at end of module

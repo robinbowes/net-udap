@@ -91,11 +91,12 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
     sub update {
         my ( $self, $args_ref ) = @_;
         $args_ref = {} unless defined $args_ref;
-        
-        foreach my $param ( keys %{$args_ref}) {
+
+        # print "updating client: " . Dumper \$args_ref;
+        foreach my $param ( keys %{$args_ref} ) {
             $self->{$param} = $args_ref->{$param};
         }
-        
+
         return $self;
     }
 }

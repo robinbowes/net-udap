@@ -46,13 +46,7 @@ my $udap = Net::UDAP->new;
 
 # Send the discovery packet
 
-$udap->send_discovery({advanced => 1});
-
-# Read the responses
-# readUDP returns true if it processed a packet
-# We need to repeatedly read packets until none are left
-#while ( $udap->read_UDP ) { }
-#$udap->read_UDP;
+$udap->discover( { advanced => 1 } );
 
 # Get the hash of discovered devices
 my $discovered_devices_ref = $udap->get_devices;
@@ -60,45 +54,44 @@ my $discovered_devices_ref = $udap->get_devices;
 if ($discovered_devices_ref) {
 
     foreach my $device ( values %{$discovered_devices_ref} ) {
-        $udap->send_get_ip( { mac => $device->get_mac } );
-	#while ( $udap->read_UDP ) { };
-        $udap->send_get_data(
-	    { mac => $device->get_mac, 
-		data => [ qw(
-		        lan_ip_mode
-			lan_network_address
-		        lan_subnet_mask
-			lan_gateway
-			hostname
-			bridging
-			interface
-			primary_dns
-			secondary_dns
-			server_address
-			slimserver_address
-			slimserver_name
-			wireless.wireless_mode
-			wireless.SSID
-			wireless.channel
-			wireless.region_id
-			wireless.keylen
-			wireless.wep_key[0]
-			wireless.wep_key[1]
-			wireless.wep_key[2]
-			wireless.wep_key[3]
-			wireless.wepon
-			wireless.wpa_cipher
-			wireless.wpa_mode
-			wireless.wpa_enabled
-			wireless.wpa_psk
-			)
-			],
-	    }
-	);
-	#while ( $udap->read_UDP ) { };
-        print 'Device mac: ' . $device->get_mac . "\n";
-	print Dumper \$device;
+        $udap->get_ip( { mac => $device->get_mac } );
+
+        $udap->get_data(
+            {   mac  => $device->get_mac,
+                data => [
+                    qw(
+                        lan_ip_mode
+                        lan_network_address
+                        lan_subnet_mask
+                        lan_gateway
+                        hostname
+                        bridging
+                        interface
+                        primary_dns
+                        secondary_dns
+                        server_address
+                        slimserver_address
+                        slimserver_name
+                        wireless.wireless_mode
+                        wireless.SSID
+                        wireless.channel
+                        wireless.region_id
+                        wireless.keylen
+                        wireless.wep_key[0]
+                        wireless.wep_key[1]
+                        wireless.wep_key[2]
+                        wireless.wep_key[3]
+                        wireless.wepon
+                        wireless.wpa_cipher
+                        wireless.wpa_mode
+                        wireless.wpa_enabled
+                        wireless.wpa_psk
+                        )
+                ],
+            }
+        );
     }
+    print Dumper \$discovered_devices_ref;
 }
 
 # Set the IP and wireless information for the first device

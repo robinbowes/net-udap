@@ -17,19 +17,19 @@ use Net::UDAP::Log;
 my %fields_default = (
 
     # define fields and default values here
-    broadcast  => BROADCAST_OFF,
-    dst_type   => DST_TYPE_ETH,
-    dst_mac    => undef,
-    src_type   => ADDR_TYPE_UDP,
-    src_ip     => IP_ZERO,
-    src_port   => PORT_ZERO,
-    seq        => pack( 'n', 0x0001 ),    # unused
-    udap_type  => UDAP_TYPE_UCP,
-    ucp_flags  => pack( 'C', 0x01 ),      # unused?
-    ucp_class  => UAP_CLASS_UCP,
-    ucp_method => undef,
+    broadcast   => BROADCAST_OFF,
+    dst_type    => DST_TYPE_ETH,
+    dst_mac     => undef,
+    src_type    => ADDR_TYPE_UDP,
+    src_ip      => IP_ZERO,
+    src_port    => PORT_ZERO,
+    seq         => pack( 'n', 0x0001 ),        # unused
+    udap_type   => UDAP_TYPE_UCP,
+    ucp_flags   => pack( 'C', 0x01 ),          # unused?
+    ucp_class   => UAP_CLASS_UCP,
+    ucp_method  => undef,
     credentials => pack( 'C32', 0x00 x 32 ),
-    data       => [],   # store data as an ref to an anon array of param names
+    data => [],    # store data as an ref to an anon array of param names
 );
 
 __PACKAGE__->follow_best_practice;
@@ -77,6 +77,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             }
 
             ( $method eq UCP_METHOD_GET_IP ) && do {
+
                 # nothing further to do for get_ip
                 last SWITCH;
             };
@@ -94,12 +95,13 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             };
 
             ( $method eq UCP_METHOD_GET_DATA ) && do {
+
                 # valid data
                 last SWITCH;
             };
 
             ( $method eq UCP_METHOD_SET_DATA ) && do {
-                
+
                 last SWITCH;
             };
 
@@ -117,7 +119,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         # The first part of the msg is same for all msg types
         my $str .= $self->get_broadcast;
         $str    .= $self->get_dst_type;
-        $str    .= $self->get_dst_mac;      # mac stored packed
+        $str    .= $self->get_dst_mac;     # mac stored packed
         $str    .= $self->get_src_type;
         $str    .= $self->get_src_ip;
         $str    .= $self->get_src_port;
@@ -125,25 +127,44 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         $str    .= $self->get_udap_type;
         $str    .= $self->get_ucp_flags;
         $str    .= $self->get_ucp_class;
-        
+
         my $method = $self->get_ucp_method;
-        $str    .= $method;
-        
+        $str .= $method;
+
     SWITCH: {
-        ( ($method eq UCP_METHOD_GET_DATA)
-    or    ($method eq UCP_METHOD_SET_DATA)) && do {
-            
-            $str .= $self->get_credentials;
-            $str .= pack( 'n', scalar @{$self->get_data} );
-            foreach my $param_name (@{$self->get_data}) {
-                if (exists $offset_from_name->{$param_name}) {
-                    $str .= pack('n', $offset_from_name->{$param_name});
-                    $str .= pack('n', $length_from_name->{$param_name});
+            (          ( $method eq UCP_METHOD_DISCOVER )
+                    or ( $method eq UCP_METHOD_ADV_DISCOVER )
+                    or ( $method eq UCP_METHOD_GET_IP )
+                )
+                && do {
+                last SWITCH;
+                };
+            (          ( $method eq UCP_METHOD_GET_DATA )
+                    or ( $method eq UCP_METHOD_SET_DATA )
+                )
+                && do {
+
+                $str .= $self->get_credentials;
+                $str .= pack( 'n', scalar @{ $self->get_data } )
+                    ;    # no. of data items
+                foreach my $param_name ( @{ $self->get_data } ) {
+                    if ( exists $offset_from_name->{$param_name} ) {
+                        $str .= pack( 'n', $offset_from_name->{$param_name} );
+                        $str .= pack( 'n', $length_from_name->{$param_name} );
+                    }
+                    else {
+                        log( warn =>
+                                "Client param name [$param_name] not valid\n"
+                        );
+                    }
                 }
-            }
-            last SWITCH;
+                last SWITCH;
+                };
+            log( error =>
+                    "msg method $ucp_method_name->{$method} not implemented\n"
+            );
+            return undef;
         }
-    }
 
         return $str;
     }
