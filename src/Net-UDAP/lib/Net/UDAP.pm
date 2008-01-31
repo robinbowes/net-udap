@@ -29,6 +29,7 @@ my %field_default = (
 __PACKAGE__->follow_best_practice;
 __PACKAGE__->mk_accessors( keys %field_default );
 
+use IO::Select;
 use IO::Socket;
 use Time::HiRes;
 
@@ -57,12 +58,16 @@ use Time::HiRes;
         my $sock = IO::Socket::INET->new(
             Proto     => 'udp',
             LocalPort => PORT_UDAP,
-            Blocking  => 0,
+# Setting Blocking like this doesn't work on Windows. bah.
+#            Blocking  => 0,
             Broadcast => 1,
         );
+        if (!defined $sock) {
+            croak "error creating socket: $@";
+        }
         return $sock;
 
-        # May need to set non-blocking a different way, depending on
+        # Need to set non-blocking a different way, depending on
         # whether or not the std method works on Windows
         # This is how SC does it:
         #defined( Slim::Utils::Network::blocking( $_sock, 0 ) ) || do {
@@ -223,11 +228,13 @@ use Time::HiRes;
         my $local_ip        = $self->get_local_ip;
         my $local_ip_a      = inet_ntoa($local_ip);
         log( debug => "local ip: $local_ip_a\n" );
+        
+        my $select = IO::Select->new( $self->get_socket );
 
-        while ( my $clientpaddr
+        while ( $select->can_read(1) ) {
+        if (my $clientpaddr
             = $self->get_socket->recv( my $raw_msg, UDP_MAX_MSG_LEN ) )
         {
-            ;
 
             $packet_received = 1;
 
@@ -244,6 +251,7 @@ use Time::HiRes;
         }
 
         return $packet_received;
+    }
     }
 
     # dispatch table for received msgs
