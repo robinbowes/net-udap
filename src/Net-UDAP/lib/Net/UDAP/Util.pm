@@ -12,7 +12,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
 use Exporter qw(import);
 
 %EXPORT_TAGS = (
-    all => [qw( hexstr decode_hex encode_mac decode_mac detect_local_ip )] );
+    all => [qw( hexstr decode_hex encode_mac decode_mac detect_local_ip set_blocking )] );
 Exporter::export_tags('all');
 
 use Net::UDAP::Log;
@@ -139,6 +139,32 @@ sub detect_local_ip {
     # Find my half of the connection
     my ( $port, $address ) = sockaddr_in( ( getsockname($sock) )[0] );
     return $address;
+}
+
+=head2 set_blocking( $sock, [0 | 1] )
+
+Set the passed socket to be blocking (1) or non-blocking (0)
+
+=cut
+
+sub set_blocking {
+
+    my ($sock, $block_val) = @_;
+
+    # Can just set blocking status on systems other than Windows
+    return $sock->blocking($block_val) unless $^O =~ /Win32/;
+
+    # $nonblocking is the opposite of $block_val!
+    my $nonblocking = $block_val ? "0" : "1";
+    my $retval = ioctl($sock, 0x8004667e, \$nonblocking);
+
+    # presumably, this is because ioctl returns undef for true
+    # in perl 5.8 and lateR?
+    if (!defined($retval) && $] >= 5.008) {
+            $retval = "0 but true";
+    }
+
+    return $retval;
 }
 
 1;    # Magic true value required at end of module

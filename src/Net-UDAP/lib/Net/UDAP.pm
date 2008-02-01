@@ -66,6 +66,10 @@ use Time::HiRes;
         if ( !defined $sock ) {
             croak "error creating socket: $@";
         }
+        # Now set socket non-blocking in a way that works on Windows
+        if (!set_blocking($sock, 0)) {
+            croak "error setting socket non-blocking";
+        }
         return $sock;
 
         # Need to set non-blocking a different way, depending on
