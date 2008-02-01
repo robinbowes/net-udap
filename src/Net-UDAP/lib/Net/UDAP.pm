@@ -58,11 +58,12 @@ use Time::HiRes;
         my $sock = IO::Socket::INET->new(
             Proto     => 'udp',
             LocalPort => PORT_UDAP,
-# Setting Blocking like this doesn't work on Windows. bah.
-#            Blocking  => 0,
+
+            # Setting Blocking like this doesn't work on Windows. bah.
+            #            Blocking  => 0,
             Broadcast => 1,
         );
-        if (!defined $sock) {
+        if ( !defined $sock ) {
             croak "error creating socket: $@";
         }
         return $sock;
@@ -228,30 +229,31 @@ use Time::HiRes;
         my $local_ip        = $self->get_local_ip;
         my $local_ip_a      = inet_ntoa($local_ip);
         log( debug => "local ip: $local_ip_a\n" );
-        
+
         my $select = IO::Select->new( $self->get_socket );
 
         while ( $select->can_read(1) ) {
-        if (my $clientpaddr
-            = $self->get_socket->recv( my $raw_msg, UDP_MAX_MSG_LEN ) )
-        {
+            if ( my $clientpaddr
+                = $self->get_socket->recv( my $raw_msg, UDP_MAX_MSG_LEN ) )
+            {
 
-            $packet_received = 1;
+                $packet_received = 1;
 
-            # get src port and src IP
-            my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
+                # get src port and src IP
+                my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
 
-            # Don't process packets we sent
-            if ( $src_ip eq $local_ip ) {
-                log( info => '    Ignoring packet sent from this machine' );
-                next;
+                # Don't process packets we sent
+                if ( $src_ip eq $local_ip ) {
+                    log( info =>
+                            '    Ignoring packet sent from this machine' );
+                    next;
+                }
+
+                $self->process_msg($raw_msg);
             }
 
-            $self->process_msg($raw_msg);
         }
-
         return $packet_received;
-    }
     }
 
     # dispatch table for received msgs

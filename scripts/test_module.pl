@@ -29,7 +29,6 @@ use Data::Dumper;
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
-use Net::UDAP::Constant;
 use Net::UDAP;
 
 $| = 1;
