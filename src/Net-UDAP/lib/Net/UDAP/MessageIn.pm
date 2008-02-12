@@ -18,25 +18,22 @@ use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 my %field_default = (
-    raw_msg            => undef,
-    dst_addr_type      => undef,
-    dst_mac            => undef,
-    dst_ip             => undef,
-    dst_port           => undef,
-    src_addr_type      => undef,
-    src_mac            => undef,
-    src_ip             => undef,
-    src_port           => undef,
-    seq                => undef,
-    udap_type          => undef,
-    ucp_flags          => undef,
-    uap_class          => undef,
-    ucp_method         => undef,
-    discovery_data_ref => {}
-    ,    # store data returned from discovery as hash ref.
-         # $discovery_data_ref->{ucp_code} = { data_length => ?, data => ? }
-    param_data_ref => {},    # store data returned from get_data as hash ref.
-                             # $param_data_ref->{param_name} = "data string"
+    raw_msg         => undef,
+    dst_addr_type   => undef,
+    dst_mac         => undef,
+    dst_ip          => undef,
+    dst_port        => undef,
+    src_addr_type   => undef,
+    src_mac         => undef,
+    src_ip          => undef,
+    src_port        => undef,
+    seq             => undef,
+    udap_type       => undef,
+    ucp_flags       => undef,
+    uap_class       => undef,
+    ucp_method      => undef,
+    device_data_ref => {},      # hash containing decoded client data
+                                # param_name => param_value
 );
 
 __PACKAGE__->follow_best_practice;
@@ -48,8 +45,12 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my ( $caller, $arg_ref ) = @_;
         my $class = ref $caller || $caller;
 
-        # Define hash ref if no args passed
-        $arg_ref = {} unless defined $arg_ref;
+        # Define arg hash ref if no args passed
+        $arg_ref = {} unless ref($arg_ref) eq 'HASH';
+
+        # Define device_data hash ref if not defined
+        $arg_ref->{device_data_ref} = {}
+            unless ref( $arg_ref->{device_data_ref} ) eq 'HASH';
 
         # Values from $arg_ref over-write the default values
         my %arg = ( %field_default, %{$arg_ref} );
@@ -60,6 +61,24 @@ __PACKAGE__->mk_accessors( keys %field_default );
             $self->udap_decode;
         }
         return $self;
+    }
+
+    sub update_device_data {
+        my ( $self, $arg_ref ) = @_;
+
+        # Define hash ref if no args passed
+        $arg_ref = {} unless ref($arg_ref) eq 'HASH';
+
+        my $device_data_ref = $self->get_device_data_ref;
+
+        # Update the device_data hash with the new values
+        # No need to write the device_data hash back since
+        # we're working with a reference to it
+        @$device_data_ref{ keys %{$arg_ref} } = values %{$arg_ref};
+
+        # $self->set_device_data_ref( $device_data_ref );
+
+        return;
     }
 
     sub prepare_credential {
@@ -150,13 +169,14 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
             (          ( $self->get_ucp_method eq UCP_METHOD_DISCOVER )
                     or ( $self->get_ucp_method eq UCP_METHOD_ADV_DISCOVER )
+                    or ( $self->get_ucp_method eq UCP_METHOD_GET_IP )
                 )
                 && do {
 
                 # The rest of the packet is in the format:
                 #   ucp_code, length, data
 
-                my $data_ref = {};
+                my $param_data_ref = {};
 
                 while ( $os < length($raw_msg) ) {
 
@@ -178,7 +198,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
                     # add to the data hash
                     if ( exists $ucp_code_name->{$ucp_code} ) {
-                        $data_ref->{ $ucp_code_name->{$ucp_code} }
+                        $param_data_ref->{ $ucp_code_name->{$ucp_code} }
                             = $ucp_code_unpack->{$ucp_code}->($data);
                     }
                     else {
@@ -187,15 +207,10 @@ __PACKAGE__->mk_accessors( keys %field_default );
                     }
                 }
 
-                $self->set_discovery_data_ref($data_ref);
+                $self->update_device_data($param_data_ref);
 
                 last SWITCH;
                 };
-
-            ( $self->get_ucp_method eq UCP_METHOD_GET_IP ) && do {
-
-                last SWITCH;
-            };
 
             ( $self->get_ucp_method eq UCP_METHOD_GET_DATA ) && do {
 
@@ -234,25 +249,23 @@ __PACKAGE__->mk_accessors( keys %field_default );
                         = $unpack_from_offset->{$param_offset}
                         ->($data_string);
                 }
-                $self->set_param_data_ref($param_data_ref);
+                $self->update_device_data($param_data_ref);
                 last SWITCH;
             };
 
             # default action if ucp_method is not recognised goes here
-            croak( 'Unknown ucp_method value found: '
-                    . hexstr( $self->get_ucp_method, 4 ) );
+            if ( exists $ucp_method_name->{ $self->get_ucp_method } ) {
+                carp(     'ucp_method '
+                        . $ucp_method_name->{ $self->get_ucp_method }
+                        . ' not implemented yet' );
+            }
+            else {
+                croak( 'Unknown ucp_method value found: '
+                        . hexstr( $self->get_ucp_method, 4 ) );
+            }
         }
         return $self;
     }
-
-#    sub set_data {
-#	#
-#	my ($self, $args_ref) = @_;
-#
-#	$args_ref = {} if (!defined $args_ref);
-#
-#	return $self->{data}->{$args_ref->{ucp_code}} = { datalength => $args_ref->{$data_length}, data => $args_ref->{$data} };
-#    }
 }
 
 1;    # Magic true value required at end of module

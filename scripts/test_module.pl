@@ -30,6 +30,7 @@ use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
 use Net::UDAP;
+use Net::UDAP::Constant;
 
 $| = 1;
 
@@ -56,8 +57,8 @@ if ($discovered_devices_ref) {
         $udap->get_ip( { mac => $device->get_mac } );
 
         $udap->get_data(
-            {   mac  => $device->get_mac,
-                data => [
+            {   mac         => $device->get_mac,
+                data_to_get => [
                     qw(
                         lan_ip_mode
                         lan_network_address
@@ -71,24 +72,33 @@ if ($discovered_devices_ref) {
                         server_address
                         slimserver_address
                         slimserver_name
-                        wireless.wireless_mode
-                        wireless.SSID
-                        wireless.channel
-                        wireless.region_id
-                        wireless.keylen
-                        wireless.wep_key[0]
-                        wireless.wep_key[1]
-                        wireless.wep_key[2]
-                        wireless.wep_key[3]
-                        wireless.wepon
-                        wireless.wpa_cipher
-                        wireless.wpa_mode
-                        wireless.wpa_enabled
-                        wireless.wpa_psk
+                        wireless_wireless_mode
+                        wireless_SSID
+                        wireless_channel
+                        wireless_region_id
+                        wireless_keylen
+                        wireless_wep_key_0
+                        wireless_wep_key_1
+                        wireless_wep_key_2
+                        wireless_wep_key_3
+                        wireless_wep_on
+                        wireless_wpa_cipher
+                        wireless_wpa_mode
+                        wireless_wpa_enabled
+                        wireless_wpa_psk
                         )
                 ],
             }
-        );
+        ) if 1;
+        $udap->set_data(
+            {   mac         => $device->get_mac,
+                data_to_set => {
+                    wireless_wireless_mode => WLAN_MODE_INFRASTRUCTURE,
+                    wireless_wep_on        => WLAN_WEP_ON,
+                    wireless_wep_key_0     => 'abcde',
+                },
+            }
+        ) if 0;
     }
     print Dumper \$discovered_devices_ref;
 }

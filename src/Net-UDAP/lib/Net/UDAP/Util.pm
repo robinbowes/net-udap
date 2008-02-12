@@ -12,10 +12,15 @@ use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
 use Exporter qw(import);
 
 %EXPORT_TAGS = (
-    all => [qw( hexstr decode_hex encode_mac decode_mac detect_local_ip set_blocking )] );
+    all => [
+        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip set_blocking )
+    ]
+);
 Exporter::export_tags('all');
 
 use Net::UDAP::Log;
+use Net::UDAP::Constant;
+use IO::Socket::INET;
 use Socket;
 
 {
@@ -95,51 +100,73 @@ use Socket;
             unpack( 'n', $bytes )
         );
     }
-}
 
-sub detect_local_ip {
+    sub create_socket {
 
-    # This routine adapted from code used in SqueezeCenter
-    #
-    # Thanks to trick from Bill Fenner, trying to use a UDP socket won't
-    # send any packets out over the network, but will cause the routing
-    # table to do a lookup, so we can find our address. Don't use a high
-    # level abstraction like IO::Socket, as it dies when connect() fails.
-    #
-    # time.nist.gov - though it doesn't really matter.
-    my $raddr = '192.43.244.18';
-    my $rport = 123;
+        # Setup listening socket on UDAP port
+        my $sock = IO::Socket::INET->new(
+            Proto     => 'udp',
+            LocalPort => PORT_UDAP,
 
-    my $proto     = ( getprotobyname('udp') )[2];
-    my $pname     = ( getprotobynumber($proto) )[0];
-    my $sock      = Symbol::gensym();
-    my $localhost = INADDR_LOOPBACK;
-
-    my $iaddr = inet_aton($raddr) or do {
-        log( warn =>
-                "Couldn't call inet_aton($raddr) - falling back to $localhost"
+            # Setting Blocking like this doesn't work on Windows. bah.
+            #            Blocking  => 0,
+            Broadcast => 1,
         );
-        return $localhost;
-    };
+        if ( !defined $sock ) {
+            croak "error creating socket: $@";
+        }
 
-    my $paddr = sockaddr_in( $rport, $iaddr );
+        # Now set socket non-blocking in a way that works on Windows
+        if ( !set_blocking( $sock, 0 ) ) {
+            croak "error setting socket non-blocking";
+        }
+        return $sock;
+    }
 
-    socket( $sock, PF_INET, SOCK_DGRAM, $proto ) || do {
-        log( warn =>
-                "Couldn't call socket(PF_INET, SOCK_DGRAM, \$proto) - falling back to $localhost"
-        );
-        return $localhost;
-    };
+    sub detect_local_ip {
 
-    connect( $sock, $paddr ) || do {
-        log( warn => "Couldn't call connect() - falling back to $localhost" );
-        return $localhost;
-    };
+        # This routine adapted from code used in SqueezeCenter
+        #
+        # Thanks to trick from Bill Fenner, trying to use a UDP socket won't
+        # send any packets out over the network, but will cause the routing
+        # table to do a lookup, so we can find our address. Don't use a high
+        # level abstraction like IO::Socket, as it dies when connect() fails.
+        #
+        # time.nist.gov - though it doesn't really matter.
+        my $raddr = '192.43.244.18';
+        my $rport = 123;
 
-    # Find my half of the connection
-    my ( $port, $address ) = sockaddr_in( ( getsockname($sock) )[0] );
-    return $address;
-}
+        my $proto     = ( getprotobyname('udp') )[2];
+        my $pname     = ( getprotobynumber($proto) )[0];
+        my $sock      = Symbol::gensym();
+        my $localhost = INADDR_LOOPBACK;
+
+        my $iaddr = inet_aton($raddr) or do {
+            log( warn =>
+                    "Couldn't call inet_aton($raddr) - falling back to $localhost"
+            );
+            return $localhost;
+        };
+
+        my $paddr = sockaddr_in( $rport, $iaddr );
+
+        socket( $sock, PF_INET, SOCK_DGRAM, $proto ) || do {
+            log( warn =>
+                    "Couldn't call socket(PF_INET, SOCK_DGRAM, \$proto) - falling back to $localhost"
+            );
+            return $localhost;
+        };
+
+        connect( $sock, $paddr ) || do {
+            log( warn =>
+                    "Couldn't call connect() - falling back to $localhost" );
+            return $localhost;
+        };
+
+        # Find my half of the connection
+        my ( $port, $address ) = sockaddr_in( ( getsockname($sock) )[0] );
+        return $address;
+    }
 
 =head2 set_blocking( $sock, [0 | 1] )
 
@@ -147,26 +174,27 @@ Set the passed socket to be blocking (1) or non-blocking (0)
 
 =cut
 
-sub set_blocking {
+    sub set_blocking {
 
-    my ($sock, $block_val) = @_;
+        my ( $sock, $block_val ) = @_;
 
-    # Can just set blocking status on systems other than Windows
-    return $sock->blocking($block_val) unless $^O =~ /Win32/;
+        # Can just set blocking status on systems other than Windows
+        return $sock->blocking($block_val) unless $^O =~ /Win32/;
 
-    # $nonblocking is the opposite of $block_val!
-    my $nonblocking = $block_val ? "0" : "1";
-    my $retval = ioctl($sock, 0x8004667e, \$nonblocking);
+        # $nonblocking is the opposite of $block_val!
+        my $nonblocking = $block_val ? "0" : "1";
+        my $retval = ioctl( $sock, 0x8004667e, \$nonblocking );
 
-    # presumably, this is because ioctl returns undef for true
-    # in perl 5.8 and lateR?
-    if (!defined($retval) && $] >= 5.008) {
+        # presumably, this is because ioctl returns undef for true
+        # in perl 5.8 and lateR?
+        if ( !defined($retval) && $] >= 5.008 ) {
             $retval = "0 but true";
+        }
+
+        return $retval;
     }
 
-    return $retval;
 }
-
 1;    # Magic true value required at end of module
 __END__
 

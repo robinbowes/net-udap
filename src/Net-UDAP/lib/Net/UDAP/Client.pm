@@ -19,38 +19,48 @@ use Net::UDAP::Log;
 my %fields_default = (
 
     # define fields and default values here
-    bridging             => undef,
-    hostname             => undef,
-    device_id            => undef,
-    device_type          => undef,
-    firmware_rev         => undef,
-    hardware_rev         => undef,
-    interface            => undef,
-    lan_gateway          => undef,
-    lan_ip_mode          => undef,
-    lan_network_address  => undef,
-    lan_subnet_mask      => undef,
-    mac                  => undef,
-    primary_dns          => undef,
-    secondary_dns        => undef,
-    server_address       => undef,
-    slimserver_address   => undef,
-    slimserver_name      => undef,
-    uuid                 => undef,
-    wireless_channel     => undef,
-    wireless_keylen      => undef,
-    wireless_mode        => undef,
-    wireless_region_id   => undef,
-    wireless_SSID        => undef,
-    wireless_wep_key_0   => undef,
-    wireless_wep_key_1   => undef,
-    wireless_wep_key_2   => undef,
-    wireless_wep_key_3   => undef,
-    wireless_wepon       => undef,
-    wireless_wpa_cipher  => undef,
-    wireless_wpa_enabled => undef,
-    wireless_wpa_mode    => undef,
-    wireless_wpa_psk     => undef,
+    # parameter data, returned by get_data msgs
+    lan_ip_mode           => undef,
+    lan_network_address   => undef,
+    lan_subnet_mask       => undef,
+    lan_gateway           => undef,
+    hostname              => undef,
+    bridging              => undef,
+    interface             => undef,
+    primary_dns           => undef,
+    secondary_dns         => undef,
+    server_address        => undef,
+    slimserver_address    => undef,
+    slimserver_name       => undef,
+    wireles_wireless_mode => undef,
+    wireless_SSID         => undef,
+    wireless_channel      => undef,
+    wireless_region_id    => undef,
+    wireless_keylen       => undef,
+    wireless_wep_key_0    => undef,
+    wireless_wep_key_1    => undef,
+    wireless_wep_key_2    => undef,
+    wireless_wep_key_3    => undef,
+    wireless_wep_on       => undef,
+    wireless_wpa_cipher   => undef,
+    wireless_wpa_mode     => undef,
+    wireless_wpa_enabled  => undef,
+    wireless_wpa_psk      => undef,
+
+    # ucp_codes
+    hostname     => undef,
+    device_type  => undef,
+    use_dhcp     => undef,
+    ip_addr      => undef,
+    subnet_mask  => undef,
+    gateway_addr => undef,
+    firmware_rev => undef,
+    hardware_rev => undef,
+    device_id    => undef,
+    uuid         => undef,
+
+    # Other
+    mac => undef,
 );
 
 __PACKAGE__->follow_best_practice;
@@ -60,14 +70,14 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
     # class methods
     sub new {
-        my ( $caller, $args_ref ) = @_;
+        my ( $caller, $arg_ref ) = @_;
         my $class = ref $caller || $caller;
 
         # make sure $arg_ref is a hash ref
-        $args_ref = {} unless defined $args_ref;
+        $arg_ref = {} unless defined $arg_ref;
 
         # values from $arg_ref over-write the defaults
-        my %arg = ( %fields_default, %{$args_ref} );
+        my %arg = ( %fields_default, %{$arg_ref} );
 
         # A mac must be specified when creating a client
         if ( !defined $arg{mac} ) {
@@ -89,12 +99,11 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
     }
 
     sub update {
-        my ( $self, $args_ref ) = @_;
-        $args_ref = {} unless defined $args_ref;
+        my ( $self, $arg_ref ) = @_;
+        $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
-        # print "updating client: " . Dumper \$args_ref;
-        foreach my $param ( keys %{$args_ref} ) {
-            $self->{$param} = $args_ref->{$param};
+        foreach my $param ( keys %{$arg_ref} ) {
+            $self->{$param} = $arg_ref->{$param};
         }
 
         return $self;

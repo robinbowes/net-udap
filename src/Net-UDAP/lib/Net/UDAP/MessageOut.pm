@@ -14,6 +14,8 @@ use base qw(Class::Accessor);
 use Net::UDAP::Constant;
 use Net::UDAP::Log;
 
+use Data::Dumper;
+
 my %fields_default = (
 
     # define fields and default values here
@@ -29,7 +31,8 @@ my %fields_default = (
     ucp_class   => UAP_CLASS_UCP,
     ucp_method  => undef,
     credentials => pack( 'C32', 0x00 x 32 ),
-    data => [],    # store data as an ref to an anon array of param names
+    data_to_get => [],    # store data to get as an anon array of param names
+    data_to_set => {},    # store data to set as an anon hash
 );
 
 __PACKAGE__->follow_best_practice;
@@ -41,8 +44,16 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         my ( $caller, $args_ref ) = @_;
         my $class = ref $caller || $caller;
 
-        # make sure $arg_ref is a hash ref
-        $args_ref = {} unless defined $args_ref;
+        # make sure $args_ref is a hash ref
+        $args_ref = {} unless ref($args_ref) eq 'HASH';
+
+        # make sure $args_ref->{data_to_get} is an array ref
+        $args_ref->{data_to_get} = []
+            unless ref( $args_ref->{data_to_get} ) eq 'ARRAY';
+
+        # make sure $args_ref->{data_to_set} is a hash_ref
+        $args_ref->{data_to_set} = {}
+            unless ref( $args_ref->{data_to_get} ) eq 'HASH';
 
         # values from $args_ref over-write the defaults
         my %arg = ( %fields_default, %{$args_ref} );
@@ -84,23 +95,28 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
             ( $method eq UCP_METHOD_SET_IP ) && do {
 
-                #
+                carp "Creating set_ip msg not implemented yet";
 
                 last SWITCH;
             };
 
             ( $method eq UCP_METHOD_RESET ) && do {
+                
+                carp "Creating reset msg not implemented yet";
 
                 last SWITCH;
             };
 
             ( $method eq UCP_METHOD_GET_DATA ) && do {
-
-                # valid data
+                
+                # ought to validate the requested data here
+                # otherwise, nothing further to do
                 last SWITCH;
             };
 
             ( $method eq UCP_METHOD_SET_DATA ) && do {
+                
+                carp "Creating set_data msg not implemented yet";
 
                 last SWITCH;
             };
@@ -139,15 +155,12 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 && do {
                 last SWITCH;
                 };
-            (          ( $method eq UCP_METHOD_GET_DATA )
-                    or ( $method eq UCP_METHOD_SET_DATA )
-                )
-                && do {
+            ( $method eq UCP_METHOD_GET_DATA ) && do {
 
                 $str .= $self->get_credentials;
-                $str .= pack( 'n', scalar @{ $self->get_data } )
+                $str .= pack( 'n', scalar @{ $self->get_data_to_get } )
                     ;    # no. of data items
-                foreach my $param_name ( @{ $self->get_data } ) {
+                foreach my $param_name ( @{ $self->get_data_to_get } ) {
                     if ( exists $offset_from_name->{$param_name} ) {
                         $str .= pack( 'n', $offset_from_name->{$param_name} );
                         $str .= pack( 'n', $length_from_name->{$param_name} );
@@ -159,7 +172,11 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                     }
                 }
                 last SWITCH;
-                };
+            };
+            ( $method eq UCP_METHOD_SET_DATA ) && do {
+                print "set_data\n";
+                last SWITCH;
+            };
             log( error =>
                     "msg method $ucp_method_name->{$method} not implemented\n"
             );
