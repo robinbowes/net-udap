@@ -28,6 +28,7 @@ use Net::UDAP;
 
 {
     my $discovered_devices = {};
+    my @device_list;
     my $udap;
 
     sub init {
@@ -46,7 +47,7 @@ use Net::UDAP;
 
         $udap->discover( { advanced => 1 } );
         $discovered_devices = $udap->get_devices;
-
+        @device_list = sort values %{$discovered_devices};
     }
 
     sub help_discover {
@@ -61,14 +62,16 @@ use Net::UDAP;
     }
 
     sub run_list {
+        my $list_format = "%2s %-17s %6s %6s\n";
         my $count = 1;
-        foreach my $device ( values %{$discovered_devices} ) {
-            print "$count. "
-                . $device->get_mac
-                . ' (type => '
-                . $device->get_device_type
-                . ', status => '
-                . $device->get_device_status . ")\n";
+        printf $list_format, '#', '   MAC Address   ', ' Type ', 'Status';
+        printf $list_format, '='x2, '='x17, '='x6, '='x6;
+        foreach my $device ( @device_list ) {
+            printf $list_format,
+                $count,
+                $device->get_mac,
+                $device->get_device_type,
+                $device->get_device_status;
             $count++;
         }
     }
