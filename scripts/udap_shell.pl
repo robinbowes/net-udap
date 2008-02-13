@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# $Id: test_module.pl 19 2008-02-12 19:23:39Z robin $
+# $Id: udap_shell.pl 19 2008-02-12 19:23:39Z robin $
 #
 # Copyright (c) 2008 by Robin Bowes <robin@robinbowes.com>
 #
