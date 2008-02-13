@@ -29,45 +29,52 @@ use Net::UDAP;
 {
     my $discovered_devices = {};
     my $udap;
-    
+
     sub init {
         $udap = Net::UDAP->new;
     }
 
-    sub prompt_str { "UDAP> " }
+    sub prompt_str {"UDAP> "}
 
     ######## Discovery ########
-    
+
     sub smry_discover {
-        return "Discover UDAP devices"
+        return "Discover UDAP devices";
     }
 
     sub run_discover {
-        
-        $udap->discover;
+
+        $udap->discover( { advanced => 1 } );
         $discovered_devices = $udap->get_devices;
 
-    };
-    
+    }
+
     sub help_discover {
-        
+
         return "Full help text for discovery goes here";
     }
-    
+
     ######## List ########
-    
+
     sub smry_list {
         return "List discovered devices";
     }
-    
+
     sub run_list {
+        my $count = 1;
         foreach my $device ( values %{$discovered_devices} ) {
-            print $device->get_mac . "\n";
+            print "$count. "
+                . $device->get_mac
+                . ' (type => '
+                . $device->get_device_type
+                . ', status => '
+                . $device->get_device_status . ")\n";
+            $count++;
         }
     }
-    
+
     sub help_list {
-        return "lists all devices that have been discovered"
+        return "lists all devices that have been discovered";
     }
 }
 1;    # Magic true value required at end of module

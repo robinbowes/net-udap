@@ -63,9 +63,9 @@ if ($discovered_devices_ref) {
 #                    gateway => '172.28.28.1',
 #                }
             }
-        ) if 1;
+        ) if 0;
         
-        $udap->get_ip( { mac => $device->get_mac } );
+        $udap->get_ip( { mac => $device->get_mac } ) if 0;
 
         $udap->get_data(
             {   mac         => $device->get_mac,
@@ -100,7 +100,7 @@ if ($discovered_devices_ref) {
                         )
                 ],
             }
-        ) if 1;
+        ) if 0;
         $udap->set_data(
             {   mac         => $device->get_mac,
                 data_to_set => {
@@ -111,7 +111,7 @@ if ($discovered_devices_ref) {
             }
         ) if 0;
     }
-    # print Dumper \$discovered_devices_ref;
+    print Dumper \$discovered_devices_ref;
 }
 
 # Set the IP and wireless information for the first device

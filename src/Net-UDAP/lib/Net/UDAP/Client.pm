@@ -63,16 +63,17 @@ my %fields_default = (
     wireless_wpa_psk      => undef,
 
     # ucp_codes
-    hostname     => undef,
-    device_type  => undef,
-    use_dhcp     => undef,
-    ip_addr      => undef,
-    subnet_mask  => undef,
-    gateway_addr => undef,
-    firmware_rev => undef,
-    hardware_rev => undef,
-    device_id    => undef,
-    uuid         => undef,
+    #    hostname     => undef, # duplicate
+    device_type   => undef,
+    use_dhcp      => undef,
+    ip_addr       => undef,
+    subnet_mask   => undef,
+    gateway_addr  => undef,
+    firmware_rev  => undef,
+    hardware_rev  => undef,
+    device_id     => undef,
+    device_status => undef,
+    uuid          => undef,
 
     # Other
     mac => undef,
