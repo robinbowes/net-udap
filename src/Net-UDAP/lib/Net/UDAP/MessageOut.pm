@@ -41,22 +41,22 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 {
 
     sub new {
-        my ( $caller, $args_ref ) = @_;
+        my ( $caller, $arg_ref ) = @_;
         my $class = ref $caller || $caller;
 
-        # make sure $args_ref is a hash ref
-        $args_ref = {} unless ref($args_ref) eq 'HASH';
+        # make sure $arg_ref is a hash ref
+        $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
-        # make sure $args_ref->{data_to_get} is an array ref
-        $args_ref->{data_to_get} = []
-            unless ref( $args_ref->{data_to_get} ) eq 'ARRAY';
+        # make sure $arg_ref->{data_to_get} is an array ref
+        $arg_ref->{data_to_get} = []
+            unless ref( $arg_ref->{data_to_get} ) eq 'ARRAY';
 
-        # make sure $args_ref->{data_to_set} is a hash_ref
-        $args_ref->{data_to_set} = {}
-            unless ref( $args_ref->{data_to_get} ) eq 'HASH';
+        # make sure $arg_ref->{data_to_set} is a hash_ref
+        $arg_ref->{data_to_set} = {}
+            unless ref( $arg_ref->{data_to_get} ) eq 'HASH';
 
-        # values from $args_ref over-write the defaults
-        my %arg = ( %fields_default, %{$args_ref} );
+        # values from $arg_ref over-write the defaults
+        my %arg = ( %fields_default, %{$arg_ref} );
 
         # A method must be specified, i.e. what type of packet is this?
         my $method = $arg{ucp_method};
@@ -95,27 +95,33 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
             ( $method eq UCP_METHOD_SET_IP ) && do {
 
-                carp "Creating set_ip msg not implemented yet";
-
+                # The following data is required:
+                #   UCP_CODE_SET_IP (0x03)
+                #   IP address
+                #   Netmask
+                #   Gateway
+                #   DHCP_ON / DHCP_OFF
+                # Ought to validate the supplied data here
+                # Otherwise, nothing further to do.
                 last SWITCH;
             };
 
             ( $method eq UCP_METHOD_RESET ) && do {
-                
+
                 carp "Creating reset msg not implemented yet";
 
                 last SWITCH;
             };
 
             ( $method eq UCP_METHOD_GET_DATA ) && do {
-                
-                # ought to validate the requested data here
-                # otherwise, nothing further to do
+
+                # Ought to validate the requested data here
+                # Otherwise, nothing further to do
                 last SWITCH;
             };
 
             ( $method eq UCP_METHOD_SET_DATA ) && do {
-                
+
                 carp "Creating set_data msg not implemented yet";
 
                 last SWITCH;
@@ -155,6 +161,20 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 && do {
                 last SWITCH;
                 };
+            ( $method eq UCP_METHOD_SET_IP ) && do {
+
+                # IP Address, Netmask, Gateway
+                my $dts = $self->get_data_to_set->{ip};
+                $str .= exists $dts->{ip} ? inet_aton( $dts->{ip} ) : IP_ZERO;
+                $str .= exists $dts->{netmask}
+                    ? inet_aton( $dts->{netmask} )
+                    : IP_ZERO;
+                $str .= exists $dts->{gateway}
+                    ? inet_aton( $dts->{gateway} )
+                    : IP_ZERO;
+                $str .= exists $dts->{ip} ? DHCP_OFF : DHCP_ON;
+                last SWITCH;
+            };
             ( $method eq UCP_METHOD_GET_DATA ) && do {
 
                 $str .= $self->get_credentials;
@@ -167,7 +187,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                     }
                     else {
                         log( warn =>
-                                "Client param name [$param_name] not valid\n"
+                                "    Client param name [$param_name] not valid\n"
                         );
                     }
                 }
@@ -178,7 +198,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 last SWITCH;
             };
             log( error =>
-                    "msg method $ucp_method_name->{$method} not implemented\n"
+                    '  msg method ' . $ucp_method_name->{$method} . " not implemented\n"
             );
             return undef;
         }

@@ -153,7 +153,9 @@ use Time::HiRes;
         my $dest    = pack_sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
         log(      info => '*** Broadcasting '
                 . $ucp_method_name->{$ucp_method}
-                . " message on $dest_ip\n" );
+                . ' message to MAC address '
+                . decode_mac($encoded_mac)
+                . " on $dest_ip\n" );
         return $sock->send( $msg_ref->packed, 0, $dest );
     }
 
@@ -164,20 +166,20 @@ use Time::HiRes;
         select( undef, undef, undef, UDAP_TIMEOUT );
 
         # read responses
-        $self->read_UDP;
+        while ($self->read_UDP) {};
         return;
     }
 
     sub read_UDP {
         my ($self) = @_;
 
-        log( debug => 'read_UDP triggered' );
+        log( debug => '    read_UDP triggered' );
 
         my $packet_received = 0;
         my $local_ip        = $self->get_local_ip;
         my $local_ip_a      = inet_ntoa($local_ip);
         
-        log( debug => "local ip: $local_ip_a\n" );
+        log( debug => "    local ip: $local_ip_a\n" );
 
         my $select = IO::Select->new( $self->get_socket );
 
@@ -194,7 +196,7 @@ use Time::HiRes;
                 # Don't process packets we sent
                 if ( $src_ip eq $local_ip ) {
                     log( info =>
-                            '    Ignoring packet sent from this machine' );
+                            '  Ignoring packet sent from this machine' );
                     next;
                 }
 
@@ -243,58 +245,58 @@ use Time::HiRes;
             || croak('ucp_method invalid or not defined.');
         my $mac = decode_mac( $msg_ref->get_src_mac );
         log( info =>
-                "    $ucp_method_name->{$method} response received from $mac\n"
+                "  $ucp_method_name->{$method} response received from $mac\n"
         );
         return $handler->( $self, $msg_ref );
     }
 
     sub method_discover {
         my ( $self, $msg_ref ) = @_;
-        log( debug => 'processing discover packet' );
+        log( debug => '    processing discover packet' );
         return $self->add_client($msg_ref);
     }
 
     sub method_get_ip {
         my ( $self, $msg_ref ) = @_;
-        log( debug => 'processing get_ip packet' );
+        log( debug => '    processing get_ip packet' );
         return ( $self->update_client($msg_ref) );
         return;
     }
 
     sub method_set_ip {
         my ( $self, $msg_ref ) = @_;
-        log( debug => 'processing set_ip packet' );
+        log( debug => '    processing set_ip packet' );
         return;
     }
 
     sub method_reset {
         my ( $self, $msg_ref ) = @_;
-        log( debug => 'processing reset packet' );
+        log( debug => '    processing reset packet' );
         return;
     }
 
     sub method_get_data {
         my ( $self, $msg_ref ) = @_;
-        log( debug => 'processing get_data packet' );
+        log( debug => '    processing get_data packet' );
         return ( $self->update_client($msg_ref) );
         return;
     }
 
     sub method_set_data {
         my ( $self, $msg_ref ) = @_;
-        log( debug => 'processing set_data packet' );
+        log( debug => '    processing set_data packet' );
         return;
     }
 
     sub method_error {
         my ( $self, $msg_ref ) = @_;
-        log( debug => 'processing error packet' );
+        log( debug => '    processing error packet' );
         return;
     }
 
     sub method_credentials_error {
         my ( $self, $msg_ref ) = @_;
-        log( debug => 'processing credentials_error packet' );
+        log( debug => '    processing credentials_error packet' );
         return;
     }
 

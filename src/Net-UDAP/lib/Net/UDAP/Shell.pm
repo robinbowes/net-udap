@@ -1,39 +1,19 @@
-package Net::UDAP::Log;
+package Net::UDAP::Shell;
 
-# $Id$
+# $Id: Log.pm 19 2008-02-12 19:23:39Z robin $
 
 use warnings;
 use strict;
 
 use version; our $VERSION = qv('0.1');
 
-use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
-use Exporter qw(import);
-
-%EXPORT_TAGS = ( all => [qw( log )] );
-Exporter::export_tags('all');
-
-use Log::StdLog {
-    handle => *STDERR,
-    level  => 'info',
-    format => \&std_log_format,
-};
-
+use base eq(Term::Shell);
 {
 
-    sub log {
+    sub run_hello {
+        
+        print "Hello!\n";
 
-        # A wrapper round the Log::StdLog semantics to make logging easier
-        # Also, avoids the need to use the complex use statement in
-        # all code requiring logging
-        print {*STDLOG} (@_);
-    }
-
-    sub std_log_format {
-
-        # a subroutine that Log::StdLog will use  to format log msgs
-        my ( $date, $pid, $level, @message ) = @_;
-        return "$level: " . join( q{}, @message );
     }
 
 }
@@ -42,7 +22,7 @@ __END__
 
 =head1 NAME
 
-Net::UDAP::Log - Wrapper module to implement logging for UDAP modules
+Net::UDAP::Shell - Wrapper module to implement interactive shell UDAP module
 
 
 =head1 VERSION
@@ -52,7 +32,7 @@ This document describes Net::UDAP::Log version 0.1
 
 =head1 SYNOPSIS
 
-    use Net::UDAP::Log;
+    use Net::UDAP::Shell;
 
 =for author to fill in:
     Brief code example(s) here showing commonest usage(s).
@@ -148,7 +128,7 @@ None reported.
 No bugs have been reported.
 
 Please report any bugs or feature requests to
-C<bug-net-udap-log@rt.cpan.org>, or through the web interface at
+C<bug-net-udap-shell@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org>.
 
 

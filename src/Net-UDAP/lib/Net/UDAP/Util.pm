@@ -143,7 +143,7 @@ use Socket;
 
         my $iaddr = inet_aton($raddr) or do {
             log( warn =>
-                    "Couldn't call inet_aton($raddr) - falling back to $localhost"
+                    "    Couldn't call inet_aton($raddr) - falling back to $localhost"
             );
             return $localhost;
         };
@@ -152,14 +152,14 @@ use Socket;
 
         socket( $sock, PF_INET, SOCK_DGRAM, $proto ) || do {
             log( warn =>
-                    "Couldn't call socket(PF_INET, SOCK_DGRAM, \$proto) - falling back to $localhost"
+                    "    Couldn't call socket(PF_INET, SOCK_DGRAM, \$proto) - falling back to $localhost"
             );
             return $localhost;
         };
 
         connect( $sock, $paddr ) || do {
             log( warn =>
-                    "Couldn't call connect() - falling back to $localhost" );
+                    "    Couldn't call connect() - falling back to $localhost" );
             return $localhost;
         };
 

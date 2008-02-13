@@ -202,7 +202,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
                             = $ucp_code_unpack->{$ucp_code}->($data);
                     }
                     else {
-                        log( warn => "Invalid ucp_code: [$ucp_code]\n" );
+                        log( warn => "  Invalid ucp_code: [$ucp_code]\n" );
                         return;
                     }
                 }
@@ -218,7 +218,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
                 my $num_items = unpack( 'n', substr( $raw_msg, $os, 2 ) );
                 $os += 2;
 
-                log( debug => "num_items: $num_items\n" );
+                log( debug => "    num_items: $num_items\n" );
 
                 my $param_data_ref = {};
 
@@ -229,21 +229,21 @@ __PACKAGE__->mk_accessors( keys %field_default );
                         = unpack( 'n', substr( $raw_msg, $os, 2 ) );
                     $os += 2;
 
-                    log( debug => "param offset: $param_offset\n" );
+                    log( debug => "    param offset: $param_offset\n" );
 
                     #get length
                     my $data_length
                         = unpack( 'n', substr( $raw_msg, $os, 2 ) );
                     $os += 2;
 
-                    log( debug => "data length: $data_length\n" );
+                    log( debug => "    data length: $data_length\n" );
 
                     #get string
                     my $data_string = unpack( "a*",
                         substr( $raw_msg, $os, $data_length ) );
                     $os += $data_length;
 
-                    log( debug => "data string: $data_string\n" );
+                    log( debug => "    data string: $data_string\n" );
 
                     $param_data_ref->{ $name_from_offset->{$param_offset} }
                         = $unpack_from_offset->{$param_offset}
@@ -252,12 +252,19 @@ __PACKAGE__->mk_accessors( keys %field_default );
                 $self->update_device_data($param_data_ref);
                 last SWITCH;
             };
+            
+            ( $self->get_ucp_method eq UCP_METHOD_SET_IP ) && do {
+                log( warn => '    Need to check contents of set_ip response msg' );
+                last SWITCH;
+            };
+            
 
             # default action if ucp_method is not recognised goes here
             if ( exists $ucp_method_name->{ $self->get_ucp_method } ) {
                 carp(     'ucp_method '
                         . $ucp_method_name->{ $self->get_ucp_method }
                         . ' not implemented yet' );
+                print "Raw msg:\n" . HexDump( $raw_msg );
             }
             else {
                 croak( 'Unknown ucp_method value found: '

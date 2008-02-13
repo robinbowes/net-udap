@@ -44,6 +44,7 @@ $| = 1;
 # Create the socket
 my $udap = Net::UDAP->new;
 
+
 # Send the discovery packet
 
 $udap->discover( { advanced => 1 } );
@@ -54,6 +55,16 @@ my $discovered_devices_ref = $udap->get_devices;
 if ($discovered_devices_ref) {
 
     foreach my $device ( values %{$discovered_devices_ref} ) {
+        $udap->set_ip(
+            {   mac         => $device->get_mac,
+#                data_to_set => {
+#                    ip      => '172.29.28.27',
+#                    netmask => '255.255.0.0',
+#                    gateway => '172.28.28.1',
+#                }
+            }
+        ) if 1;
+        
         $udap->get_ip( { mac => $device->get_mac } );
 
         $udap->get_data(
@@ -100,7 +111,7 @@ if ($discovered_devices_ref) {
             }
         ) if 0;
     }
-    print Dumper \$discovered_devices_ref;
+    # print Dumper \$discovered_devices_ref;
 }
 
 # Set the IP and wireless information for the first device
