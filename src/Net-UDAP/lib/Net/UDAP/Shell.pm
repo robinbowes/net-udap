@@ -1,21 +1,74 @@
 package Net::UDAP::Shell;
 
-# $Id: Log.pm 19 2008-02-12 19:23:39Z robin $
+# $Id$
+#
+# Copyright (c) 2008 by Robin Bowes <robin@robinbowes.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use warnings;
 use strict;
 
 use version; our $VERSION = qv('0.1');
 
-use base eq(Term::Shell);
+use base qw(Term::Shell);
+
+use Net::UDAP;
+
 {
-
-    sub run_hello {
-        
-        print "Hello!\n";
-
+    my $discovered_devices = {};
+    my $udap;
+    
+    sub init {
+        $udap = Net::UDAP->new;
     }
 
+    sub prompt_str { "UDAP> " }
+
+    ######## Discovery ########
+    
+    sub smry_discover {
+        return "Discover UDAP devices"
+    }
+
+    sub run_discover {
+        
+        $udap->discover;
+        $discovered_devices = $udap->get_devices;
+
+    };
+    
+    sub help_discover {
+        
+        return "Full help text for discovery goes here";
+    }
+    
+    ######## List ########
+    
+    sub smry_list {
+        return "List discovered devices";
+    }
+    
+    sub run_list {
+        foreach my $device ( values %{$discovered_devices} ) {
+            print $device->get_mac . "\n";
+        }
+    }
+    
+    sub help_list {
+        return "lists all devices that have been discovered"
+    }
 }
 1;    # Magic true value required at end of module
 __END__

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# $Id: udap_shell.pl 19 2008-02-12 19:23:39Z robin $
+# $Id$
 #
 # Copyright (c) 2008 by Robin Bowes <robin@robinbowes.com>
 #
@@ -33,7 +33,7 @@ use Net::UDAP::Shell;
 
 $| = 1;
 
-Net::UDAP::Shell->new-cmdloop;
+Net::UDAP::Shell->new->cmdloop;
 
 # vim:set softtabstop=4:
 # vim:set shiftwidth=4:
