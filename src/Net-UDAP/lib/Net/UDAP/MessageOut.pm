@@ -1,6 +1,21 @@
 package Net::UDAP::MessageOut;
 
 # $Id$
+#
+# Copyright (c) 2008 by Robin Bowes <robin@robinbowes.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use warnings;
 use strict;
@@ -318,7 +333,7 @@ None reported.
 No bugs have been reported.
 
 Please report any bugs or feature requests to
-C<bug-net-udap-message@rt.cpan.org>, or through the web interface at
+C<bug-net-udap-messageout@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org>.
 
 
