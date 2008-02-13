@@ -19,67 +19,165 @@ package Net::UDAP::Shell;
 
 use warnings;
 use strict;
+use Sys::Hostname;
+use Getopt::Long;
 
 use version; our $VERSION = qv('0.1');
 
-use base qw(Term::Shell);
+use base qw(
+    Class::Accessor::Complex
+    Term::Shell
+);
+
+my %fields_default = (
+    num         => 0,
+    name        => 'UDAP',
+    longname    => 'UDAP Shell',
+    prompt_spec => ': \n:\#; ',
+    hostname    => ((split(/\./, hostname))[0]),
+);
+
+__PACKAGE__
+    ->mk_hash_accessors(qw(opt))
+    ->mk_accessors( keys %fields_default )
+    ->follow_best_practice;
+
+# These aren't the constructor()'s DEFAULTS()!  Because new() comes from
+# Term::Shell, we don't have the convenience of the the 'constructor'
+# MethodMaker-generated constructor. Therefore, Term::Shell::Enhanced defines
+# its own mechanism.
 
 use Net::UDAP;
 
-{
-    my $discovered_devices = {};
-    my @device_list;
-    my $udap;
+sub get_history_filename {
+    my $self = shift;
+    my $filename = $self->history_filename;
+    return $filename if defined $filename;
 
-    sub init {
-        $udap = Net::UDAP->new;
+    # Per default, the history file name is derived from the shell name, with
+    # nonword characters suitably changed to make a sane filename.
+
+    (my $name = $self->name) =~ s/\W/_/g;
+    "$ENV{HOME}/.$name\_history";    
+}
+
+my $discovered_devices = undef; # hash ref containing refs to device objects
+                                # for all devices found; keyed on MAC
+my @device_list = undef;        # array containing refs to device objects
+                                # for all devices found;
+my $udap;                       # object used to access all UDAP methods, etc.
+
+my $current_device = undef;     # index of the device from @device_list that is
+                                # currently being configured
+
+sub init {
+        my $self = shift;
+    $self->SUPER::init(@_);
+
+    my %args = @{ $self->{API}{args} };
+    $self->log($args{log})   unless defined $self->log;
+    $self->opt($args{opt})   unless defined $self->opt;
+
+    while (my ($key, $value) = each %fields_default) {
+        $self->$key($value) unless defined $self->$key;
     }
+    
+    # Only now can we try to read the history file, because the
+    # 'history_filename' might have been defined in the DEFAULTS().
 
-    sub prompt_str {"UDAP> "}
-
-    ######## Discovery ########
-
-    sub smry_discover {
-        return "Discover UDAP devices";
-    }
-
-    sub run_discover {
-
-        $udap->discover( { advanced => 1 } );
-        $discovered_devices = $udap->get_devices;
-        @device_list = sort values %{$discovered_devices};
-    }
-
-    sub help_discover {
-
-        return "Full help text for discovery goes here";
-    }
-
-    ######## List ########
-
-    sub smry_list {
-        return "List discovered devices";
-    }
-
-    sub run_list {
-        my $list_format = "%2s %-17s %6s %6s\n";
-        my $count = 1;
-        printf $list_format, '#', '   MAC Address   ', ' Type ', 'Status';
-        printf $list_format, '='x2, '='x17, '='x6, '='x6;
-        foreach my $device ( @device_list ) {
-            printf $list_format,
-                $count,
-                $device->get_mac,
-                $device->get_device_type,
-                $device->get_device_status;
-            $count++;
+    if ($self->{term}->Features->{setHistory}) {
+        my $filename = $self->get_history_filename;
+        if (-r $filename) {
+            open(my $fh, '<', $filename) or
+                die "can't open history file $filename: $!\n";
+            chomp(my @history = <$fh>);
+            $self->{term}->SetHistory(@history);
+            close $fh or die "can't close history file $filename: $!\n";
         }
-    }
+    }    
+    $udap = Net::UDAP->new;
+}
 
-    sub help_list {
-        return "lists all devices that have been discovered";
+sub prompt_str {
+    'UDAP'
+    . defined $current_device ? '[' . $device_list[$current_device]->get_mac . ']' : ''
+    . '> ';
+}
+
+sub postloop {
+    my $self = shift;
+    print "\n";
+
+    if ($self->{term}->Features->{getHistory}) {
+        my $filename = $self->get_history_filename;
+        open(my $fh, '>', $filename) or
+            die "can't open history file $filename for writing: $!\n";
+        print $fh "$_\n" for grep { length } $self->{term}->GetHistory;
+        close $fh or die "can't close history file $filename: $!\n";
     }
 }
+
+######## Discovery ########
+
+sub smry_discover {
+    return "Discover UDAP devices";
+}
+
+sub run_discover {
+
+    $udap->discover( { advanced => 1 } );
+    $discovered_devices = $udap->get_devices;
+    @device_list = sort values %{$discovered_devices};
+}
+
+sub help_discover {
+
+    return "Full help text for discovery goes here";
+}
+
+######## List ########
+
+sub smry_list {
+    return "List discovered devices";
+}
+
+sub run_list {
+    my $list_format = "%2s %-17s %-10s %-15s\n";
+    my $count = 1;
+    printf $list_format, '#', '   MAC Address   ', 'Type', 'Status';
+    printf $list_format, '='x2, '='x17, '='x10, '='x15;
+    foreach my $device ( @device_list ) {
+        printf $list_format,
+            $count,
+            $device->get_mac,
+            $device->get_device_type,
+            $device->get_device_status;
+        $count++;
+    }
+}
+
+sub help_list {
+    return "lists all devices that have been discovered";
+}
+
+######## configure ########
+
+sub smry_configure {
+    'configure a device'
+}
+
+sub run_configure {
+    if (!defined $discovered_devices) {
+        print "Discovery not yet run\n";
+        return;
+    };
+    if (scalar(@device_list) == 0) {
+        print "No devices found\n";
+        return;
+    };
+    $current_device = 1;
+}
+
 1;    # Magic true value required at end of module
 __END__
 

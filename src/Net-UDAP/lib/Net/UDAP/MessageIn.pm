@@ -210,7 +210,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
                         ? substr( $raw_msg, $os, $data_length )
                         : '';
                     $os += $data_length;
-
+                    
                     # add to the data hash
                     if ( exists $ucp_code_name->{$ucp_code} ) {
                         $param_data_ref->{ $ucp_code_name->{$ucp_code} }
