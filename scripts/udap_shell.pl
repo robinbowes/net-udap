@@ -33,7 +33,8 @@ use Net::UDAP::Shell;
 
 $| = 1;
 
-Net::UDAP::Shell->new->cmdloop;
+my $shell = Net::UDAP::Shell->new;
+$shell->cmdloop;
 
 # vim:set softtabstop=4:
 # vim:set shiftwidth=4:

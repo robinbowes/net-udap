@@ -210,7 +210,7 @@ use Time::HiRes;
 
                 # Don't process packets we sent
                 if ( $src_ip eq $local_ip ) {
-                    log( info =>
+                    log( debug =>
                             '  Ignoring packet sent from this machine' );
                     next;
                 }

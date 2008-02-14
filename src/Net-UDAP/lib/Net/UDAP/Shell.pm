@@ -19,165 +19,297 @@ package Net::UDAP::Shell;
 
 use warnings;
 use strict;
-use Sys::Hostname;
 use Getopt::Long;
+use Data::Dumper;
 
 use version; our $VERSION = qv('0.1');
 
 use base qw(
-    Class::Accessor::Complex
     Term::Shell
+    Class::Accessor
 );
 
 my %fields_default = (
-    num         => 0,
-    name        => 'UDAP',
-    longname    => 'UDAP Shell',
-    prompt_spec => ': \n:\#; ',
-    hostname    => ((split(/\./, hostname))[0]),
+    num              => 0,
+    log              => undef,
+    name             => 'UDAP',
+    history_filename => "$ENV{HOME}/.UDAP\_history",
 );
 
-__PACKAGE__
-    ->mk_hash_accessors(qw(opt))
-    ->mk_accessors( keys %fields_default )
-    ->follow_best_practice;
-
-# These aren't the constructor()'s DEFAULTS()!  Because new() comes from
-# Term::Shell, we don't have the convenience of the the 'constructor'
-# MethodMaker-generated constructor. Therefore, Term::Shell::Enhanced defines
-# its own mechanism.
+__PACKAGE__->follow_best_practice;
+__PACKAGE__->mk_accessors( keys %fields_default );
 
 use Net::UDAP;
+use Scalar::Util qw{ looks_like_number };
 
-sub get_history_filename {
-    my $self = shift;
-    my $filename = $self->history_filename;
-    return $filename if defined $filename;
+my $discovered_devices = undef;   # hash ref containing refs to device objects
+                                  # for all devices found; keyed on MAC
+my @device_list        = undef;   # array containing refs to device objects
+                                  # for all devices found;
+my $udap;    # object used to access all UDAP methods, etc.
 
-    # Per default, the history file name is derived from the shell name, with
-    # nonword characters suitably changed to make a sane filename.
-
-    (my $name = $self->name) =~ s/\W/_/g;
-    "$ENV{HOME}/.$name\_history";    
-}
-
-my $discovered_devices = undef; # hash ref containing refs to device objects
-                                # for all devices found; keyed on MAC
-my @device_list = undef;        # array containing refs to device objects
-                                # for all devices found;
-my $udap;                       # object used to access all UDAP methods, etc.
-
-my $current_device = undef;     # index of the device from @device_list that is
-                                # currently being configured
+my $current_device = undef;    # index of the device from @device_list that is
+                               # currently being configured
 
 sub init {
-        my $self = shift;
+    my $self = shift;
     $self->SUPER::init(@_);
 
     my %args = @{ $self->{API}{args} };
-    $self->log($args{log})   unless defined $self->log;
-    $self->opt($args{opt})   unless defined $self->opt;
+    $self->set_log( $args{log} ) unless defined $self->get_log;
 
-    while (my ($key, $value) = each %fields_default) {
-        $self->$key($value) unless defined $self->$key;
+    while ( my ( $key, $value ) = each %fields_default ) {
+        my $set_key = "set_$key";
+        my $get_key = "get_$key";
+        $self->$set_key($value) unless defined $self->$get_key;
     }
-    
+
     # Only now can we try to read the history file, because the
     # 'history_filename' might have been defined in the DEFAULTS().
 
-    if ($self->{term}->Features->{setHistory}) {
+    if ( $self->{term}->Features->{setHistory} ) {
         my $filename = $self->get_history_filename;
-        if (-r $filename) {
-            open(my $fh, '<', $filename) or
-                die "can't open history file $filename: $!\n";
-            chomp(my @history = <$fh>);
+        if ( -r $filename ) {
+            open( my $fh, '<', $filename )
+                or die "can't open history file $filename: $!\n";
+            chomp( my @history = <$fh> );
             $self->{term}->SetHistory(@history);
             close $fh or die "can't close history file $filename: $!\n";
         }
-    }    
+    }
     $udap = Net::UDAP->new;
 }
 
 sub prompt_str {
-    'UDAP'
-    . defined $current_device ? '[' . $device_list[$current_device]->get_mac . ']' : ''
-    . '> ';
+    my $device
+        = ( defined $current_device )
+        ? ' ['
+        . ( $current_device + 1 )
+        . '] ('
+        . $device_list[$current_device]->display_name . ')'
+        : '';
+    return "UDAP$device> "
+
 }
 
 sub postloop {
     my $self = shift;
     print "\n";
 
-    if ($self->{term}->Features->{getHistory}) {
+    if ( $self->{term}->Features->{getHistory} ) {
         my $filename = $self->get_history_filename;
-        open(my $fh, '>', $filename) or
-            die "can't open history file $filename for writing: $!\n";
-        print $fh "$_\n" for grep { length } $self->{term}->GetHistory;
+        open( my $fh, '>', $filename )
+            or die "can't open history file $filename for writing: $!\n";
+        print $fh "$_\n" for grep {length} $self->{term}->GetHistory;
         close $fh or die "can't close history file $filename: $!\n";
     }
+}
+
+######## Exit ########
+
+sub alias_exit {qw( exit quit )}
+
+sub smry_exit {
+    'Exit configure mode (if configuring a device), otherwise exit application';
+}
+
+sub help_exit {
+    <<'END' }
+In global mode:
+    exit - quits the application
+In configure mode:
+    exit - returns to global mode
+END
+
+sub run_exit {
+    my $self = shift;
+
+    # Need to check if there is any information to save before exiting
+    exit(0) if !defined $current_device;
+    $current_device = undef;
 }
 
 ######## Discovery ########
 
 sub smry_discover {
-    return "Discover UDAP devices";
-}
-
-sub run_discover {
-
-    $udap->discover( { advanced => 1 } );
-    $discovered_devices = $udap->get_devices;
-    @device_list = sort values %{$discovered_devices};
+    'Discover UDAP devices and get their current configuration';
 }
 
 sub help_discover {
+    <<'END' }
+Discovers all available UDAP devices and retrieves their current configuration details.
+END
 
-    return "Full help text for discovery goes here";
+sub run_discover {
+    my $self = shift;
+    $udap->discover( { advanced => 1 } );
+    $discovered_devices = $udap->get_devices;
+    @device_list        = sort values %{$discovered_devices};
+    foreach my $device_mac ( keys %{$discovered_devices} ) {
+        $udap->get_ip( { mac => $device_mac } );
+        $udap->get_data(
+            {   mac => $device_mac,
+                data_to_get =>
+                    $discovered_devices->{$device_mac}->get_all_param_names
+            }
+        );
+    }
 }
 
 ######## List ########
 
-sub smry_list {
-    return "List discovered devices";
-}
-
-sub run_list {
-    my $list_format = "%2s %-17s %-10s %-15s\n";
-    my $count = 1;
-    printf $list_format, '#', '   MAC Address   ', 'Type', 'Status';
-    printf $list_format, '='x2, '='x17, '='x10, '='x15;
-    foreach my $device ( @device_list ) {
-        printf $list_format,
-            $count,
-            $device->get_mac,
-            $device->get_device_type,
-            $device->get_device_status;
-        $count++;
-    }
-}
+sub smry_list {'List discovered devices, or information about a device'}
 
 sub help_list {
-    return "lists all devices that have been discovered";
+    <<'END' }
+In global mode:
+    list [all] - lists all discovered devices
+    list n     - lists information about device n
+In configure mode:
+    list [all] - lists all information about current device
+    list parameter [parameter1 parameter 2 ...]
+               - lists the named parameters
+END
+
+sub run_list {
+    my ( $self, @args ) = @_;
+    my $nargs = scalar(@args);
+    if ( defined $current_device ) {
+
+        # configure mode
+    SWITCH: {
+
+            # 'list' or 'list all'
+            ( $nargs == 0 )
+                or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) ) and do {
+                $self->list_device( $device_list[$current_device] );
+                last SWITCH;
+                };
+
+            # send all supplied params to list_device sub
+            $self->list_device( $device_list[$current_device],
+                ($nargs) ? [@args] : undef );
+        }
+    }
+    else {
+
+        # global mode
+    SWITCH: {
+            (          ( $nargs == 0 )
+                    or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) )
+                )
+                and do {
+
+                # list all devices
+                $self->show_devices;
+                last SWITCH;
+                };
+            (           ( $nargs == 1 )
+                    and ( looks_like_number( $args[0] ) )
+                    and (
+                    ref( $device_list[ $args[0] - 1 ] ) eq
+                    'Net::UDAP::Client' )
+                )
+                and do {
+
+                # list all details of one device
+                # NB. The user will use device 1, 2, 3, etc. while the array
+                #     index starts at 0; hence the need to subtract one from
+                #     the number supplied by the user
+                $self->list_device( $device_list[ $args[0] - 1 ] );
+                last SWITCH;
+                };
+
+            # default SWITCH action here
+            print "Syntax error in list command\n";
+        }
+    }
+
 }
 
 ######## configure ########
 
-sub smry_configure {
-    'configure a device'
-}
+sub smry_configure {'configure a device'}
+
+sub help_configure {
+    <<'END' }
+    configure help goes here
+END
 
 sub run_configure {
-    if (!defined $discovered_devices) {
+    my ( $self, @args ) = @_;
+    if ( !defined $discovered_devices ) {
         print "Discovery not yet run\n";
         return;
-    };
-    if (scalar(@device_list) == 0) {
-        print "No devices found\n";
+    }
+    if ( scalar(@device_list) == 0 ) {
+        print "No devices found to configure\n";
         return;
-    };
-    $current_device = 1;
+    }
+    if (    ( scalar(@args) == 1 )
+        and ( looks_like_number( $args[0] ) )
+        and ( ref( $device_list[ $args[0] - 1 ] ) eq 'Net::UDAP::Client' ) )
+    {
+        $current_device = $args[0] - 1;
+        return;
+    }
 }
 
+######## non-command routines ########
+
+sub show_devices {
+    my $list_format = "%2s %-17s %-10s %-15s\n";
+    my $count       = 1;
+    printf $list_format, '#', '   MAC Address   ', 'Type', 'Status';
+    printf $list_format, '=' x 2, '=' x 17, '=' x 10, '=' x 15;
+    foreach my $device (@device_list) {
+        printf $list_format, $count, $device->get_mac,
+            $device->get_device_type, $device->get_device_status;
+        $count++;
+    }
+}
+
+sub list_device {
+    my ( $self, $device, $param_names ) = @_;
+
+    my %valid_param_names;
+    @valid_param_names{ $device->get_all_param_names } = ();
+
+    # If the user supplied any parameters, validate them and use them
+    if ( defined $param_names ) {
+
+        # create a lookup hash using a hash slice
+        my @invalid_param_names;
+        foreach my $param ( @{$param_names} ) {
+            push( @invalid_param_names, $param )
+                unless exists $valid_param_names{$param};
+        }
+        if ( scalar(@invalid_param_names) ) {
+            print "Invalid param names in list: ["
+                . join( ',', @invalid_param_names ) . "]\n";
+            return;
+        }
+    }
+    else {
+
+        # Otherwise, use all param names
+        $param_names = [ keys %valid_param_names ];
+    }
+
+    # Get a hash just those params that are not 'undef'
+    my $defined_params = $device->get_defined_params;
+
+    # Select only those params that are both defined and requested
+    # also, use a hash slice to get the keys in sorted order
+    my @keys_to_print;
+    foreach my $param ( @{$param_names} ) {
+        push( @keys_to_print, $param ) if exists $defined_params->{$param};
+    }
+
+    @keys_to_print = sort @keys_to_print;
+    $self->print_pairs( [@keys_to_print],
+        [ @{$defined_params}{@keys_to_print} ] );
+}
 1;    # Magic true value required at end of module
 __END__
 

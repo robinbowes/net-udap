@@ -124,6 +124,23 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
         return $self;
     }
+    
+    sub get_all_param_names {
+        my $self = shift;
+        return keys %fields_default;
+    }
+    
+    sub get_defined_params {
+        my $self = shift;
+        my $defined_params = {};
+        foreach my $param (keys %fields_default) {
+            my $get_param = "get_$param";
+            if (defined $self->$get_param) {
+                $defined_params->{$param} = $self->$get_param;
+            }
+        }
+        return $defined_params;
+    }
 }
 
 1;    # Magic true value required at end of module
