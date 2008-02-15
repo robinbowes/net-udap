@@ -126,7 +126,6 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
     }
     
     sub get_all_param_names {
-        my $self = shift;
         return keys %fields_default;
     }
     

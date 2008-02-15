@@ -117,8 +117,11 @@ use Time::HiRes;
     }
 
     sub set_data {
-        my ( $self, $arg_ref ) = @_;
+        my ( $self, $mac, $arg_ref ) = @_;
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
+        
+        $arg_ref->{mac} = $mac
+            unless exists $arg_ref->{mac};
 
         if ( $self->send_msg( $arg_ref, UCP_METHOD_SET_DATA ) ) {
             $self->read_responses;

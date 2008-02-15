@@ -40,6 +40,7 @@ __PACKAGE__->follow_best_practice;
 __PACKAGE__->mk_accessors( keys %fields_default );
 
 use Net::UDAP;
+use Net::UDAP::Client;
 use Scalar::Util qw{ looks_like_number };
 
 my $discovered_devices = undef;   # hash ref containing refs to device objects
@@ -48,8 +49,10 @@ my @device_list        = undef;   # array containing refs to device objects
                                   # for all devices found;
 my $udap;    # object used to access all UDAP methods, etc.
 
-my $current_device = undef;    # index of the device from @device_list that is
-                               # currently being configured
+my $current_device = undef;       # index of the device from @device_list that is
+                                  # currently being configured
+                               
+my %all_param_names;              # Hash containing all valid param names
 
 sub init {
     my $self = shift;
@@ -63,6 +66,9 @@ sub init {
         my $get_key = "get_$key";
         $self->$set_key($value) unless defined $self->$get_key;
     }
+    
+    # Create hash of valid param names
+    @all_param_names{ Net::UDAP::Client::get_all_param_names } = ();
 
     # Only now can we try to read the history file, because the
     # 'history_filename' might have been defined in the DEFAULTS().
@@ -149,16 +155,77 @@ sub run_discover {
         $udap->get_ip( { mac => $device_mac } );
         $udap->get_data(
             {   mac => $device_mac,
-                data_to_get =>
-                    $discovered_devices->{$device_mac}->get_all_param_names
+                data_to_get => keys %all_param_names
             }
         );
     }
 }
 
+######## Params ########
+
+sub smry_params {'Display a list of valid device parameters'};
+
+sub help_params {
+    <<'END' }
+Display a list of all valid device parameters
+END
+
+sub run_params {
+    my $self = shift;
+    $self->page(join ', ', keys %all_param_names, "\n");
+}
+
+######## Set ########
+
+sub smry_set {'Set device parameter(s)'}
+
+sub help_set {
+    <<'END' }
+In configure mode:
+    set param=val [param=val ...]
+END
+
+sub run_set {
+    my ($self, @args ) = @_;
+    my $nargs = scalar(@args);
+    if (!defined $current_device) {
+        print "set command not valid here\n";
+        return;
+    }
+    
+    my %params;
+    my @bad_params;
+    foreach my $arg (@args) {
+        my ($param, $value) = split /=/, $arg;
+        print "\$param: $param - \$value: $value\n";
+        if ( (!defined $param) or (!defined $value)) {
+            print "Syntax error in set command\n";
+            return;
+        }
+        if (!exists $all_param_names{$param}) {
+            push(@bad_params, $arg)
+        } else {
+            $params{$param} = $value;
+        }
+    }
+    if (scalar @bad_params) {
+        print 'Syntax error in set command. Invalid parameter(s): '
+            . join(',', @bad_params)
+            . "\n";
+        return;
+    }
+    if (!scalar(keys %params)) {
+        print "No params specified.\n";
+        return;
+    }
+    print "Shouldn't set here - but will do for now to see if it works!\n";    
+    $udap->set_data($device_list[$current_device]->get_mac, [%params])
+    
+}
+
 ######## List ########
 
-sub smry_list {'List discovered devices, or information about a device'}
+sub smry_list {'List discovered devices, or a specific information about a device'}
 
 sub help_list {
     <<'END' }
@@ -185,7 +252,7 @@ sub run_list {
                 $self->list_device( $device_list[$current_device] );
                 last SWITCH;
                 };
-
+            
             # send all supplied params to list_device sub
             $self->list_device( $device_list[$current_device],
                 ($nargs) ? [@args] : undef );
@@ -272,9 +339,6 @@ sub show_devices {
 sub list_device {
     my ( $self, $device, $param_names ) = @_;
 
-    my %valid_param_names;
-    @valid_param_names{ $device->get_all_param_names } = ();
-
     # If the user supplied any parameters, validate them and use them
     if ( defined $param_names ) {
 
@@ -282,7 +346,7 @@ sub list_device {
         my @invalid_param_names;
         foreach my $param ( @{$param_names} ) {
             push( @invalid_param_names, $param )
-                unless exists $valid_param_names{$param};
+                unless exists $all_param_names{$param};
         }
         if ( scalar(@invalid_param_names) ) {
             print "Invalid param names in list: ["
@@ -293,7 +357,7 @@ sub list_device {
     else {
 
         # Otherwise, use all param names
-        $param_names = [ keys %valid_param_names ];
+        $param_names = [ keys %all_param_names ];
     }
 
     # Get a hash just those params that are not 'undef'
