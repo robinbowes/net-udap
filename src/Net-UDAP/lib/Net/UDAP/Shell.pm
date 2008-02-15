@@ -144,7 +144,7 @@ sub run_discover {
     my $self = shift;
     $udap->discover( { advanced => 1 } );
     $discovered_devices = $udap->get_devices;
-    @device_list        = sort values %{$discovered_devices};
+    @device_list        = @{$discovered_devices}{sort keys %{$discovered_devices}};
     foreach my $device_mac ( keys %{$discovered_devices} ) {
         $udap->get_ip( { mac => $device_mac } );
         $udap->get_data(
