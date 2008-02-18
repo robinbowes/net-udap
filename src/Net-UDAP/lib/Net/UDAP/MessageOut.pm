@@ -172,6 +172,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             (          ( $method eq UCP_METHOD_DISCOVER )
                     or ( $method eq UCP_METHOD_ADV_DISCOVER )
                     or ( $method eq UCP_METHOD_GET_IP )
+                    or ( $method eq UCP_METHOD_RESET )
                 )
                 && do {
                 last SWITCH;
@@ -233,6 +234,20 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 }
                 last SWITCH;
             };
+            ( $method eq UCP_METHOD_SET_IP ) && do {
+                
+                # set_ip data is in the following format:
+                #  - ip address
+                #  - subnet mask
+                #  - gateway
+                #  - ip mode (DHCP or static)
+                my $data = $self->get_data_to_set;
+                foreach my $fieldname ( qw(lan_network_address lan_subnet_mask lan_gateway lan_ip_mode) ) {
+                    $str .= $field_pack_from_name->$data->{$fieldname}->($self->get_data_to_set->{$fieldname});
+                }
+                last SWITCH;
+            };
+            
             log(      error => '  msg method '
                     . $ucp_method_name->{$method}
                     . " not implemented\n" );

@@ -89,7 +89,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         # Empty the device list
         $self->set_device_hash( {} );
 
-        if ( $self->send_msg( $arg_ref, $ucp_method ) ) {
+        if ( $self->send_msg( undef, $ucp_method, $arg_ref ) ) {
             $self->read_responses;
         }
         return;
@@ -102,7 +102,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $arg_ref->{mac} = $mac
             unless exists $arg_ref->{mac};
 
-        if ( $self->send_msg( $arg_ref, UCP_METHOD_GET_IP ) ) {
+        if ( $self->send_msg( $mac, UCP_METHOD_GET_IP, $arg_ref ) ) {
             $self->read_responses;
         }
         return;
@@ -115,7 +115,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $arg_ref->{mac} = $mac
             unless exists $arg_ref->{mac};
 
-        if ( $self->send_msg( $arg_ref, UCP_METHOD_SET_IP ) ) {
+        if ( $self->send_msg( $mac, UCP_METHOD_SET_IP, $arg_ref ) ) {
             $self->read_responses;
         }
         return;
@@ -128,7 +128,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $arg_ref->{mac} = $mac
             unless exists $arg_ref->{mac};
 
-        if ( $self->send_msg( $arg_ref, UCP_METHOD_GET_DATA ) ) {
+        if ( $self->send_msg( $mac, UCP_METHOD_GET_DATA, $arg_ref ) ) {
             $self->read_responses;
         }
         return;
@@ -141,14 +141,23 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $arg_ref->{mac} = $mac
             unless exists $arg_ref->{mac};
 
-        if ( $self->send_msg( $arg_ref, UCP_METHOD_SET_DATA ) ) {
+        if ( $self->send_msg( $mac, UCP_METHOD_SET_DATA, $arg_ref ) ) {
             $self->read_responses;
         }
         return;
     }
 
+    sub reset {
+        my ( $self, $mac ) = @_;
+
+        if ( $self->send_msg( $mac, UCP_METHOD_RESET ) ) {
+            $self->read_responses;
+        }
+        return;
+        
+    }
     sub send_msg {
-        my ( $self, $arg_ref, $ucp_method ) = @_;
+        my ( $self, $mac, $ucp_method, $arg_ref ) = @_;
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
         croak('Must specify ucp_method') if !defined $ucp_method;
@@ -165,8 +174,8 @@ __PACKAGE__->mk_accessors( keys %field_default );
         else {
             croak(
                 'Must specify mac address for $ucp_method_name->{$ucp_method} packets'
-            ) if !defined $arg_ref->{mac};
-            $encoded_mac = encode_mac( $arg_ref->{mac} );
+            ) if !defined $mac;
+            $encoded_mac = encode_mac( $mac );
         }
 
         my $msg_ref;

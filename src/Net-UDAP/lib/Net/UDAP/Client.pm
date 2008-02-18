@@ -95,9 +95,18 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         my ( $self, $udap ) = @_;
         my $device_mac  = $self->get_mac;
         my $data_to_set = $self->get_modified_fields;
-        $udap->set_data( $device_mac, { data_to_set => $data_to_set } );
-
-        # need a set_ip here
+        $udap->set_data( $device_mac, { data_to_set => $self->get_modified_fields } );
+        $udap->set_ip( $device_mac, { data_to_set => {
+            lan_network_address => $self->get_lan_network_address,
+            lan_subnet_mask => $self->get_lan_subnet_mask,
+            lan_gateway => $self->get_lan_gateway,
+            lan_ip_mode => $self->get_lan_ip_mode,
+            } } );
+    }
+    
+    sub reset {
+        my ( $self, $udap ) = @_;
+        $udap->reset( $self->get_mac );
     }
 
     sub get_modified_fields {

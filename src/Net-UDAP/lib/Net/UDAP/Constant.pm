@@ -126,6 +126,7 @@ use constant UCP_METHOD_ERROR             => pack( 'CC', 0x00, 0x07 );
 use constant UCP_METHOD_CREDENTIALS_ERROR => pack( 'CC', 0x00, 0x08 );
 use constant UCP_METHOD_ADV_DISCOVER      => pack( 'CC', 0x00, 0x09 );
 use constant UCP_METHOD_TEN               => pack( 'CC', 0x00, 0x0A );
+use constant UCP_METHOD_GET_UUID          => pack( 'CC', 0x00, 0x0B );
 
 # Lookup hash mapping ucp_method constants to name strings
 $ucp_method_name = {
@@ -140,6 +141,7 @@ $ucp_method_name = {
     UCP_METHOD_CREDENTIALS_ERROR, 'credentials_error',
     UCP_METHOD_ADV_DISCOVER,      'adv_discovery',
     UCP_METHOD_TEN,               undef,
+    UCP_METHOD_GET_UUID,          'get_uuid',
 };
 
 # Wireless modes

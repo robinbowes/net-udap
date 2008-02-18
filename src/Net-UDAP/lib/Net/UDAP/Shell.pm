@@ -258,6 +258,66 @@ sub run_save {
     }
 }
 
+sub smry_reset {'Reset a device'}
+
+sub help_reset {
+    <<'END' }
+Reset a device
+END
+
+sub run_reset {
+    my ( $self, @args ) = @_;
+    my $nargs = scalar(@args);
+    if ( defined $current_device ) {
+
+        # configure mode
+    SWITCH: {
+
+            # 'list' or 'list all'
+            ( $nargs == 0 ) and do {
+                $device_list[$current_device]->reset($udap);
+                last SWITCH;
+            };
+            print "reset command not valid\n";
+        }
+    }
+    else {
+
+        # global mode
+    SWITCH: {
+            (          ( $nargs == 0 )
+                    or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) )
+                )
+                and do {
+
+                # reset all devices
+                foreach my $device (@device_list) {
+                    $device->reset($udap);
+                }
+                last SWITCH;
+                };
+            (           ( $nargs == 1 )
+                    and ( looks_like_number( $args[0] ) )
+                    and (
+                    ref( $device_list[ $args[0] - 1 ] ) eq
+                    'Net::UDAP::Client' )
+                )
+                and do {
+
+                # list all details of one device
+                # NB. The user will use device 1, 2, 3, etc. while the array
+                #     index starts at 0; hence the need to subtract one from
+                #     the number supplied by the user
+                $self->list_device( $device_list[ $args[0] - 1 ] );
+                last SWITCH;
+                };
+
+            # default SWITCH action here
+            print "Syntax error in list command\n";
+        }
+    }
+}
+
 ######## List ########
 
 sub smry_list {
