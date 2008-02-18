@@ -20,6 +20,10 @@ package Net::UDAP;
 use warnings;
 use strict;
 use Carp;
+use IO::Select;
+use IO::Socket;
+use Time::HiRes;
+
 use Data::Dumper;
 use Data::HexDump;
 
@@ -36,17 +40,13 @@ use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 my %field_default = (
-    socket   => undef,
-    devices  => {},          # store devices in a hash
-    local_ip => undef,
+    socket      => undef,
+    device_hash => undef,    # store devices in a hash ref
+    local_ip    => undef,
 );
 
 __PACKAGE__->follow_best_practice;
 __PACKAGE__->mk_accessors( keys %field_default );
-
-use IO::Select;
-use IO::Socket;
-use Time::HiRes;
 
 {
 
@@ -54,17 +54,26 @@ use Time::HiRes;
 
     sub new {
         my ( $caller, %args ) = @_;
-        my $class = ref $caller || $caller;
-        my $self = bless {}, $class;
 
-        $self->set_socket( create_socket );
-        $self->set_local_ip( detect_local_ip );
+        # values from $arg_ref over-write the defaults
+        my %arg = ( %field_default, %args );
+        my $class = ref $caller || $caller;
+        my $self = bless {%arg}, $class;
+
+        $self->set_socket(create_socket);
+        $self->set_local_ip(detect_local_ip);
         return $self;
     }
 
     sub close {
         my $self = shift;
         $self->get_socket->close;
+    }
+
+    sub get_device_list {
+        my $self        = shift;
+        my $device_hash = $self->get_device_hash;
+        return @{$device_hash}{ sort keys %{$device_hash} };
     }
 
     sub discover {
@@ -78,7 +87,7 @@ use Time::HiRes;
             : UCP_METHOD_DISCOVER;
 
         # Empty the device list
-        $self->set_devices( {} );
+        $self->set_device_hash( {} );
 
         if ( $self->send_msg( $arg_ref, $ucp_method ) ) {
             $self->read_responses;
@@ -87,8 +96,11 @@ use Time::HiRes;
     }
 
     sub get_ip {
-        my ( $self, $arg_ref ) = @_;
+        my ( $self, $mac, $arg_ref ) = @_;
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
+
+        $arg_ref->{mac} = $mac
+            unless exists $arg_ref->{mac};
 
         if ( $self->send_msg( $arg_ref, UCP_METHOD_GET_IP ) ) {
             $self->read_responses;
@@ -97,8 +109,11 @@ use Time::HiRes;
     }
 
     sub set_ip {
-        my ( $self, $arg_ref ) = @_;
+        my ( $self, $mac, $arg_ref ) = @_;
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
+
+        $arg_ref->{mac} = $mac
+            unless exists $arg_ref->{mac};
 
         if ( $self->send_msg( $arg_ref, UCP_METHOD_SET_IP ) ) {
             $self->read_responses;
@@ -107,8 +122,11 @@ use Time::HiRes;
     }
 
     sub get_data {
-        my ( $self, $arg_ref ) = @_;
+        my ( $self, $mac, $arg_ref ) = @_;
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
+
+        $arg_ref->{mac} = $mac
+            unless exists $arg_ref->{mac};
 
         if ( $self->send_msg( $arg_ref, UCP_METHOD_GET_DATA ) ) {
             $self->read_responses;
@@ -119,7 +137,7 @@ use Time::HiRes;
     sub set_data {
         my ( $self, $mac, $arg_ref ) = @_;
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
-        
+
         $arg_ref->{mac} = $mac
             unless exists $arg_ref->{mac};
 
@@ -157,7 +175,7 @@ use Time::HiRes;
                 {   ucp_method  => $ucp_method,
                     dst_mac     => $encoded_mac,
                     data_to_get => $arg_ref->{data_to_get},
-                    data_to_get => $arg_ref->{data_to_set},
+                    data_to_set => $arg_ref->{data_to_set},
                 }
             );
             }
@@ -184,7 +202,7 @@ use Time::HiRes;
         select( undef, undef, undef, UDAP_TIMEOUT );
 
         # read responses
-        while ($self->read_UDP) {};
+        while ( $self->read_UDP ) { }
         return;
     }
 
@@ -196,7 +214,7 @@ use Time::HiRes;
         my $packet_received = 0;
         my $local_ip        = $self->get_local_ip;
         my $local_ip_a      = inet_ntoa($local_ip);
-        
+
         log( debug => "    local ip: $local_ip_a\n" );
 
         my $select = IO::Select->new( $self->get_socket );
@@ -213,8 +231,7 @@ use Time::HiRes;
 
                 # Don't process packets we sent
                 if ( $src_ip eq $local_ip ) {
-                    log( debug =>
-                            '  Ignoring packet sent from this machine' );
+                    log(debug => '  Ignoring packet sent from this machine' );
                     next;
                 }
 
@@ -229,15 +246,15 @@ use Time::HiRes;
     my %METHOD = (
 
         # UCP_METHOD_ZERO,              undef,
-        UCP_METHOD_DISCOVER(),          \&method_discover,
-        UCP_METHOD_GET_IP(),            \&method_get_ip,
-        UCP_METHOD_SET_IP(),            \&method_set_ip,
-        UCP_METHOD_RESET(),             \&method_reset,
-        UCP_METHOD_GET_DATA(),          \&method_get_data,
-        UCP_METHOD_SET_DATA(),          \&method_set_data,
-        UCP_METHOD_ERROR(),             \&method_error,
-        UCP_METHOD_CREDENTIALS_ERROR(), \&method_credentials_error,
-        UCP_METHOD_ADV_DISCOVER(),      \&method_discover,
+        UCP_METHOD_DISCOVER(),          \&callback_discover,
+        UCP_METHOD_GET_IP(),            \&callback_get_ip,
+        UCP_METHOD_SET_IP(),            \&callback_set_ip,
+        UCP_METHOD_RESET(),             \&callback_reset,
+        UCP_METHOD_GET_DATA(),          \&callback_get_data,
+        UCP_METHOD_SET_DATA(),          \&callback_set_data,
+        UCP_METHOD_ERROR(),             \&callback_error,
+        UCP_METHOD_CREDENTIALS_ERROR(), \&callback_credentials_error,
+        UCP_METHOD_ADV_DISCOVER(),      \&callback_discover,
 
         # UCP_METHOD_TEN,               undef,
     );
@@ -268,51 +285,51 @@ use Time::HiRes;
         return $handler->( $self, $msg_ref );
     }
 
-    sub method_discover {
+    sub callback_discover {
         my ( $self, $msg_ref ) = @_;
         log( debug => '    processing discover packet' );
         return $self->add_client($msg_ref);
     }
 
-    sub method_get_ip {
+    sub callback_get_ip {
         my ( $self, $msg_ref ) = @_;
         log( debug => '    processing get_ip packet' );
         return ( $self->update_client($msg_ref) );
         return;
     }
 
-    sub method_set_ip {
+    sub callback_set_ip {
         my ( $self, $msg_ref ) = @_;
         log( debug => '    processing set_ip packet' );
         return;
     }
 
-    sub method_reset {
+    sub callback_reset {
         my ( $self, $msg_ref ) = @_;
         log( debug => '    processing reset packet' );
         return;
     }
 
-    sub method_get_data {
+    sub callback_get_data {
         my ( $self, $msg_ref ) = @_;
         log( debug => '    processing get_data packet' );
         return ( $self->update_client($msg_ref) );
         return;
     }
 
-    sub method_set_data {
+    sub callback_set_data {
         my ( $self, $msg_ref ) = @_;
         log( debug => '    processing set_data packet' );
         return;
     }
 
-    sub method_error {
+    sub callback_error {
         my ( $self, $msg_ref ) = @_;
         log( debug => '    processing error packet' );
         return;
     }
 
-    sub method_credentials_error {
+    sub callback_credentials_error {
         my ( $self, $msg_ref ) = @_;
         log( debug => '    processing credentials_error packet' );
         return;
@@ -328,7 +345,7 @@ use Time::HiRes;
         if ($mac) {
             my $device_data_ref = $msg_ref->get_device_data_ref;
             $device_data_ref->{mac} = $mac;
-            $self->get_devices->{$mac}
+            $self->get_device_hash->{$mac}
                 = Net::UDAP::Client->new($device_data_ref);
         }
         else {
@@ -345,7 +362,7 @@ use Time::HiRes;
         my $mac = decode_mac( $msg_ref->get_src_mac );
 
         if ($mac) {
-            $self->get_devices->{$mac}
+            $self->get_device_hash->{$mac}
                 ->update( $msg_ref->get_device_data_ref );
         }
         else {

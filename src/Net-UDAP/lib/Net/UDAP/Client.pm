@@ -28,61 +28,29 @@ use version; our $VERSION = qv('0.1');
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
-use Net::UDAP::Util;
+use Net::UDAP::Constant;
 use Net::UDAP::Log;
+use Net::UDAP::Util;
 
-my %fields_default = (
-
-    # define fields and default values here
-    # parameter data, returned by get_data msgs
-    lan_ip_mode           => undef,
-    lan_network_address   => undef,
-    lan_subnet_mask       => undef,
-    lan_gateway           => undef,
-    hostname              => undef,
-    bridging              => undef,
-    interface             => undef,
-    primary_dns           => undef,
-    secondary_dns         => undef,
-    server_address        => undef,
-    slimserver_address    => undef,
-    slimserver_name       => undef,
-    wireles_wireless_mode => undef,
-    wireless_SSID         => undef,
-    wireless_channel      => undef,
-    wireless_region_id    => undef,
-    wireless_keylen       => undef,
-    wireless_wep_key_0    => undef,
-    wireless_wep_key_1    => undef,
-    wireless_wep_key_2    => undef,
-    wireless_wep_key_3    => undef,
-    wireless_wep_on       => undef,
-    wireless_wpa_cipher   => undef,
-    wireless_wpa_mode     => undef,
-    wireless_wpa_enabled  => undef,
-    wireless_wpa_psk      => undef,
-
-    # ucp_codes
-    #    hostname     => undef, # duplicate
-    device_type   => undef,
-    use_dhcp      => undef,
-    ip_addr       => undef,
-    subnet_mask   => undef,
-    gateway_addr  => undef,
-    firmware_rev  => undef,
-    hardware_rev  => undef,
-    device_id     => undef,
-    device_status => undef,
-    uuid          => undef,
+my %other_codes_default = (
 
     # Other
-    mac => undef,
+    mac                => undef,
+    fields_from_device => undef,
 );
+
+# Default values for client params
+my %fields_default
+    = ( %$field_default_from_name, %$ucp_code_default, %other_codes_default );
 
 __PACKAGE__->follow_best_practice;
 __PACKAGE__->mk_accessors( keys(%fields_default) );
 
 {
+
+    # Hash to hold values originally read from the device
+    #my %fields_from_device;
+    #@fields_from_device{ keys %$field_default_from_name } = ();
 
     # class methods
     sub new {
@@ -91,6 +59,8 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
         # make sure $arg_ref is a hash ref
         $arg_ref = {} unless defined $arg_ref;
+
+        $arg_ref->{fields_from_device} = {};
 
         # values from $arg_ref over-write the defaults
         my %arg = ( %fields_default, %{$arg_ref} );
@@ -103,8 +73,59 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         }
 
         my $self = bless {%arg}, $class;
+
         return $self;
     }
+
+    sub load {
+        my ( $self, $udap ) = @_;
+        my $device_mac = $self->get_mac;
+        $udap->get_ip($device_mac);
+        $udap->get_data( $device_mac,
+            { data_to_get => [ keys %$field_default_from_name ] } );
+
+# store values retrieved from the device in separate hash
+#my $temphash = {};
+#@$temphash{keys %$field_default_from_name} = @{%$self}{ keys %$field_default_from_name };
+        @{ $self->get_fields_from_device }{ keys %$field_default_from_name }
+            = @{%$self}{ keys %$field_default_from_name };
+    }
+
+    sub save {
+        my ( $self, $udap ) = @_;
+        my $device_mac  = $self->get_mac;
+        my $data_to_set = $self->get_modified_fields;
+        $udap->set_data( $device_mac, { data_to_set => $data_to_set } );
+
+        # need a set_ip here
+    }
+
+    sub get_modified_fields {
+        my $self            = shift;
+        my $modified_fields = {};
+        foreach my $fieldname ( keys %$field_default_from_name ) {
+            my $get_field = "get_$fieldname";
+            my $newval    = $self->$get_field;
+            my $oldval    = $self->get_fields_from_device->{$fieldname};
+            if (    defined($newval)
+                and defined($oldval)
+                and $newval ne $oldval )
+            {
+                $modified_fields->{$fieldname} = $newval;
+            }
+        }
+        print "Modified fields:\n" . Dumper $modified_fields;
+        return $modified_fields;
+    }
+
+    #    sub set {
+    #        my ($self, $key) = splice(@_, 0, 2);
+    #
+    #        # Note every time someone sets some data.
+    #        print STDERR "Setting $key to @_\n";
+    #
+    #        $self->SUPER::set($key, @_);
+    #    }
 
     sub display_name {
         my $self  = shift;
@@ -119,27 +140,29 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
         foreach my $param ( keys %{$arg_ref} ) {
-            $self->{$param} = $arg_ref->{$param};
+            my $set_sub = "set_$param";
+            $self->$set_sub( $arg_ref->{$param} );
         }
 
         return $self;
     }
-    
-    sub get_all_param_names {
-        return keys %fields_default;
+
+    sub get_field_names {
+        return keys %$field_default_from_name;
     }
-    
-    sub get_defined_params {
-        my $self = shift;
-        my $defined_params = {};
-        foreach my $param (keys %fields_default) {
-            my $get_param = "get_$param";
-            if (defined $self->$get_param) {
-                $defined_params->{$param} = $self->$get_param;
+
+    sub get_defined_fields {
+        my $self           = shift;
+        my $defined_fields = {};
+        foreach my $fieldname ( keys %fields_default ) {
+            my $get_field = "get_$fieldname";
+            if ( defined $self->$get_field ) {
+                $defined_fields->{$fieldname} = $self->$get_field;
             }
         }
-        return $defined_params;
+        return $defined_fields;
     }
+
 }
 
 1;    # Magic true value required at end of module

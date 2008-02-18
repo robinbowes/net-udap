@@ -30,6 +30,7 @@ use Net::UDAP::Constant;
 use Net::UDAP::Log;
 
 use Data::Dumper;
+use Data::HexDump;
 
 my %fields_default = (
 
@@ -46,8 +47,8 @@ my %fields_default = (
     ucp_class   => UAP_CLASS_UCP,
     ucp_method  => undef,
     credentials => pack( 'C32', 0x00 x 32 ),
-    data_to_get => [],    # store data to get as an anon array of param names
-    data_to_set => {},    # store data to set as an anon hash
+    data_to_get => undef,  # store data to get as an anon array of param names
+    data_to_set => undef,  # store data to set as an anon hash
 );
 
 __PACKAGE__->follow_best_practice;
@@ -68,7 +69,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
         # make sure $arg_ref->{data_to_set} is a hash_ref
         $arg_ref->{data_to_set} = {}
-            unless ref( $arg_ref->{data_to_get} ) eq 'HASH';
+            unless ref( $arg_ref->{data_to_set} ) eq 'HASH';
 
         # values from $arg_ref over-write the defaults
         my %arg = ( %fields_default, %{$arg_ref} );
@@ -137,8 +138,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
             ( $method eq UCP_METHOD_SET_DATA ) && do {
 
-                carp "Creating set_data msg not implemented yet";
-
+                # Should I validate any data here?
                 last SWITCH;
             };
 
@@ -181,10 +181,12 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 # IP Address, Netmask, Gateway
                 my $dts = $self->get_data_to_set->{ip};
                 $str .= exists $dts->{ip} ? inet_aton( $dts->{ip} ) : IP_ZERO;
-                $str .= exists $dts->{netmask}
+                $str .=
+                    exists $dts->{netmask}
                     ? inet_aton( $dts->{netmask} )
                     : IP_ZERO;
-                $str .= exists $dts->{gateway}
+                $str .=
+                    exists $dts->{gateway}
                     ? inet_aton( $dts->{gateway} )
                     : IP_ZERO;
                 $str .= exists $dts->{ip} ? DHCP_OFF : DHCP_ON;
@@ -196,9 +198,11 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 $str .= pack( 'n', scalar @{ $self->get_data_to_get } )
                     ;    # no. of data items
                 foreach my $param_name ( @{ $self->get_data_to_get } ) {
-                    if ( exists $offset_from_name->{$param_name} ) {
-                        $str .= pack( 'n', $offset_from_name->{$param_name} );
-                        $str .= pack( 'n', $length_from_name->{$param_name} );
+                    if ( exists $field_offset_from_name->{$param_name} ) {
+                        $str .= pack( 'n',
+                            $field_offset_from_name->{$param_name} );
+                        $str .= pack( 'n',
+                            $field_size_from_name->{$param_name} );
                     }
                     else {
                         log( warn =>
@@ -209,15 +213,33 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 last SWITCH;
             };
             ( $method eq UCP_METHOD_SET_DATA ) && do {
-                print "set_data\n";
+
+                # set_data method is in the following format:
+                #  - credentials
+                #  - number of items
+                #  - repeating group of:
+                #    ( offset, data_length, data )
+                $str .= $self->get_credentials;
+
+             # no. of items is count of number of keys in get_data_to_set hash
+                my $data = $self->get_data_to_set;
+                $str .= pack( 'n', scalar( keys %{$data} ) );
+                foreach my $pname ( keys %{$data} ) {
+                    $str .= pack( 'n', $field_offset_from_name->{$pname} );
+                    my $packed_data = $field_pack_from_name->{$pname}
+                        ->( $data->{$pname} );
+                    $str .= pack( 'n', length($packed_data) );
+                    $str .= $packed_data;
+                }
                 last SWITCH;
             };
-            log( error =>
-                    '  msg method ' . $ucp_method_name->{$method} . " not implemented\n"
-            );
+            log(      error => '  msg method '
+                    . $ucp_method_name->{$method}
+                    . " not implemented\n" );
             return undef;
         }
 
+        # print "packed msg in MessageOut.packed:\n" . HexDump( $str);
         return $str;
     }
 }

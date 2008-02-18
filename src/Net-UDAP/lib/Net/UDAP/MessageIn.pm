@@ -47,8 +47,8 @@ my %field_default = (
     ucp_flags       => undef,
     uap_class       => undef,
     ucp_method      => undef,
-    device_data_ref => {},      # hash containing decoded client data
-                                # param_name => param_value
+    device_data_ref => undef,    # hash containing decoded client data
+                                 # param_name => param_value
 );
 
 __PACKAGE__->follow_best_practice;
@@ -210,7 +210,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
                         ? substr( $raw_msg, $os, $data_length )
                         : '';
                     $os += $data_length;
-                    
+
                     # add to the data hash
                     if ( exists $ucp_code_name->{$ucp_code} ) {
                         $param_data_ref->{ $ucp_code_name->{$ucp_code} }
@@ -260,26 +260,27 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
                     log( debug => "    data string: $data_string\n" );
 
-                    $param_data_ref->{ $name_from_offset->{$param_offset} }
-                        = $unpack_from_offset->{$param_offset}
+                    $param_data_ref
+                        ->{ $field_name_from_offset->{$param_offset} }
+                        = $field_unpack_from_offset->{$param_offset}
                         ->($data_string);
                 }
                 $self->update_device_data($param_data_ref);
                 last SWITCH;
             };
-            
+
             ( $self->get_ucp_method eq UCP_METHOD_SET_IP ) && do {
-                log( warn => '    Need to check contents of set_ip response msg' );
+                log( warn =>
+                        '    Need to check contents of set_ip response msg' );
                 last SWITCH;
             };
-            
 
             # default action if ucp_method is not recognised goes here
             if ( exists $ucp_method_name->{ $self->get_ucp_method } ) {
                 carp(     'ucp_method '
                         . $ucp_method_name->{ $self->get_ucp_method }
                         . ' not implemented yet' );
-                print "Raw msg:\n" . HexDump( $raw_msg );
+                print "Raw msg:\n" . HexDump($raw_msg);
             }
             else {
                 croak( 'Unknown ucp_method value found: '

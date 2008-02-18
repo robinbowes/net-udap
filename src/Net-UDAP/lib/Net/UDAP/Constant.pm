@@ -33,7 +33,11 @@ use Exporter qw(import);
     DHCP      => [qw( DHCP_OFF DHCP_ON )],
     NETWORK   => [qw( DST_TYPE_ETH IP_ZERO MAC_ZERO PORT_UDAP PORT_ZERO )],
     HASHES    => [
-        qw( $name_from_offset $length_from_name $offset_from_name $unpack_from_offset $ucp_method_name $ucp_code_name $ucp_code_unpack )
+        qw( $field_help_from_name $field_default_from_name $field_size_from_name
+            $field_name_from_offset $field_offset_from_name $field_pack_from_name
+            $field_unpack_from_offset
+            $ucp_method_name
+            $ucp_code_name $ucp_code_help $ucp_code_default $ucp_code_pack $ucp_code_unpack )
     ],
     UCP_CODES => [
         qw( UCP_CODE_ZERO UCP_CODE_ONE UCP_CODE_DEVICE_NAME UCP_CODE_DEVICE_TYPE UCP_CODE_USE_DHCP UCP_CODE_IP_ADDR UCP_CODE_SUBNET_MASK UCP_CODE_GATEWAY_ADDR UCP_CODE_EIGHT UCP_CODE_FIRMWARE_REV UCP_CODE_HARDWARE_REV UCP_CODE_DEVICE_ID UCP_CODE_DEVICE_STATUS UCP_CODE_UUID )
@@ -66,12 +70,11 @@ Exporter::export_tags('all');
 
 # hashes holding lookup tables
 # (hashrefs are exported as constants)
-our $name_from_offset = {};
-our $length_from_name = {};
-our $offset_from_name = {};
-our $unpack_from_offset = {};
 our $ucp_method_name  = {};
 our $ucp_code_name = {};
+our $ucp_code_help = {};
+our $ucp_code_default = {};
+our $ucp_code_pack = {};
 our $ucp_code_unpack = {};
 
 # Address Types
@@ -94,12 +97,6 @@ use constant IP_ZERO      => pack( 'C4', (0x00) x 4 );
 use constant MAC_ZERO     => pack( 'C6', (0x00) x 6 );
 use constant PORT_UDAP    => 0x4578;                     # port no. 17784
 use constant PORT_ZERO    => pack( 'C2', (0x00) x 2 );
-
-# Hashes to decode the offset and length of the parameters in the msg
-use constant SBR_PARAM_LENGTH_NAME => $length_from_name;
-use constant SBR_PARAM_NAME_OFFSET => $name_from_offset;
-use constant SBR_PARAM_OFFSET_NAME => $offset_from_name;
-use constant UCP_METHOD_NAME       => $ucp_method_name;
 
 # UCP Codes
 use constant UCP_CODE_ZERO          => pack( 'C', 0x00 );
@@ -152,12 +149,12 @@ use constant WLAN_MODE_ADHOC          => pack( 'C', 0x01 );
 # Wireless Regions (atheros codes)
 use constant WLAN_REGION_ATH_US => pack( 'C', 4 );
 use constant WLAN_REGION_ATH_CA => pack( 'C', 6 );
-use constant WLAN_REGION_ATH_EU => pack( 'C', 14 );
-use constant WLAN_REGION_ATH_FR => pack( 'C', 13 );
-use constant WLAN_REGION_ATH_CH => pack( 'C', 23 );
-use constant WLAN_REGION_ATH_TW => pack( 'C', 21 );
 use constant WLAN_REGION_ATH_AU => pack( 'C', 7 );
+use constant WLAN_REGION_ATH_FR => pack( 'C', 13 );
+use constant WLAN_REGION_ATH_EU => pack( 'C', 14 );
 use constant WLAN_REGION_ATH_JP => pack( 'C', 16 );
+use constant WLAN_REGION_ATH_TW => pack( 'C', 21 );
+use constant WLAN_REGION_ATH_CH => pack( 'C', 23 );
 
 # Wireless WEP
 use constant WLAN_WEP_KEYLENGTH_40  => pack( 'C', 0x00 );
@@ -179,78 +176,248 @@ use constant UDAP_TIMEOUT  => 1;
 use constant UDAP_TYPE_UCP => pack( 'C2', 0xC0, 0x01 );
 use constant UDP_MAX_MSG_LEN => 1500;
 
-{
-    my @parameter_data = (
+my @device_data = (
 
-        # name, offset, length, sub to unpack
-        'lan_ip_mode',            4,   1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'lan_network_address',    5,   4,   \&Socket::inet_ntoa,
-        'lan_subnet_mask',        9,   4,   \&Socket::inet_ntoa,
-        'lan_gateway',            13,  4,   \&Socket::inet_ntoa,
-        'hostname',               17,  33,  sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        'bridging',               50,  1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'interface',              52,  1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'primary_dns',            59,  4,   \&Socket::inet_ntoa,
-        'secondary_dns',          67,  4,   \&Socket::inet_ntoa,
-        'server_address',         71,  4,   \&Socket::inet_ntoa,
-        'slimserver_address',     79,  4,   \&Socket::inet_ntoa,
-        'slimserver_name',        83,  33,  sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        'wireless_wireless_mode', 173, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'wireless_SSID',          183, 33,  sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        'wireless_channel',       216, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'wireless_region_id',     218, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'wireless_keylen',        220, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'wireless_wep_key_0',     222, 13,  sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        'wireless_wep_key_1',     235, 13,  sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        'wireless_wep_key_2',     248, 13,  sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        'wireless_wep_key_3',     261, 13,  sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        'wireless_wep_on',        274, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'wireless_wpa_cipher',    275, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'wireless_wpa_mode',      276, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'wireless_wpa_enabled',   277, 1,   sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        'wireless_wpa_psk',       278, 64,  sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-    );
-    
-    while (@parameter_data) {
-        my $param_name   = shift @parameter_data;
-        my $param_offset = shift @parameter_data;
-        my $param_length = shift @parameter_data;
-        my $param_unpack = shift @parameter_data;
-        $name_from_offset->{$param_offset} = $param_name;
-        $length_from_name->{$param_name}   = $param_length;
-        $offset_from_name->{$param_name}   = $param_offset;
-        $unpack_from_offset->{$param_offset}   = $param_unpack;
-    }
+    # name,
+    #   default,
+    #   help,
+    #   offset, length,
+    #   sub to pack, sub to unpack,
+    'lan_ip_mode',
+        undef,
+        '0 - Use static IP details, 1 - use DHCP to discover IP details',
+        4, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'lan_network_address',
+        undef,
+        'IP address of device, (e.g. 192.168.1.10)',
+        5, 4,
+        \&Socket::inet_aton,        \&Socket::inet_ntoa,
+    'lan_subnet_mask',
+        undef,
+        'Subnet mask of local network, (e.g. 255.255.255.0)',
+        9, 4,
+        \&Socket::inet_aton,        \&Socket::inet_ntoa,
+    'lan_gateway',
+        undef,
+        'IP address of default network gateway, (e.g. 192.168.1.1)',
+        13, 4,
+        \&Socket::inet_aton,        \&Socket::inet_ntoa,
+    'hostname',
+        undef,
+        'Device hostname (is this set automatically?)',
+        17, 33,
+        sub{ pack( 'a33', shift ) }, sub{ unpack( 'a*', shift ) },
+    'bridging',
+        undef,
+        'Use device as a wireless bridge (not sure about this)',
+        50, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'interface',
+        undef,
+        '0 - wireless, 1 - wired',
+        52, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'primary_dns',
+        undef,
+        'IP address of primary DNS server',
+        59, 4,
+        \&Socket::inet_aton,        \&Socket::inet_ntoa,
+    'secondary_dns',
+        undef,
+        'IP address of secondary DNS server',
+        67, 4,
+        \&Socket::inet_aton,        \&Socket::inet_ntoa,
+    'server_address',
+        undef,
+        'IP address of currently active server (either Squeezenetwork or local server',
+        71, 4,
+        \&Socket::inet_aton,        \&Socket::inet_ntoa,
+    'slimserver_address',
+        undef,
+        'IP address of local Squeezecenter server',
+        79, 4,
+        \&Socket::inet_aton,        \&Socket::inet_ntoa,
+    'slimserver_name',
+        undef,
+        'Name of local Squeezecenter server (???)',
+        83, 33,
+        sub{ pack( 'a33', shift ) }, sub{ unpack( 'a*', shift ) },
+    'wireless_wireless_mode',
+        undef,
+        '0 - Infrastructure, 1 - Ad Hoc',
+        173, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'wireless_SSID',
+        undef,
+        'Wireless network name',
+        183, 33,
+        sub{ pack( 'a33', shift ) }, sub{ unpack( 'a*', shift ) },
+    'wireless_channel',
+        undef,
+        'Wireless channel (used by AdHoc mode???)',
+        216, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'wireless_region_id',
+        undef,
+        '4 - US, 6 - CA, 7 - AU, 13 - FR, 14 - EU, 16 - JP, 21 - TW, 23 - CH',
+        218, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'wireless_keylen',
+        undef,
+        'Length of wireless key',
+        220, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'wireless_wep_key_0',
+        undef,
+        'WEP Key 0',
+        222, 13,
+        sub{ pack( 'a13', shift ) }, sub{ unpack( 'a*', shift ) },
+    'wireless_wep_key_1',
+        undef,
+        'WEP Key 1',
+        235, 13,
+        sub{ pack( 'a13', shift ) }, sub{ unpack( 'a*', shift ) },
+    'wireless_wep_key_2',
+        undef,
+        'WEP Key 2',
+        248, 13,
+        sub{ pack( 'a13', shift ) }, sub{ unpack( 'a*', shift ) },
+    'wireless_wep_key_3',
+        undef,
+        'WEP Key 3',
+        261, 13,
+        sub{ pack( 'a13', shift ) }, sub{ unpack( 'a*', shift ) },
+    'wireless_wep_on',
+        undef,
+        '0 - WEP Off, 1 - WEP On',
+        274, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'wireless_wpa_cipher',
+        undef,
+        '1 - CCMP, 2 - TKIP',
+        275, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'wireless_wpa_mode',
+        undef,
+        '1 - WPA, 2 - WPA2',
+        276, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'wireless_wpa_enabled',
+        undef,
+        '0 - WPA Off, 1 - WPA On',
+        277, 1,
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'wireless_wpa_psk',
+        undef,
+        'WPA Public Shared Key',
+        278, 64,
+        sub{ pack( 'a64', shift ) }, sub{ unpack( 'a*', shift ) },
+);  
 
-    my @ucp_code_data = (
-    
-    # constant, name, sub to unpack
-    #    UCP_CODE_ZERO,          undef,
-    #    UCP_CODE_ONE,           undef,
-        UCP_CODE_DEVICE_NAME,   'hostname',     sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        UCP_CODE_DEVICE_TYPE,   'device_type',  sub{ my ($str) = @_; return unpack( 'a' . length($str) , $str ) },
-        UCP_CODE_USE_DHCP,      'lan_ip_mode',  sub{ my ($str) = @_; return unpack( 'n', $str ) },
-        UCP_CODE_IP_ADDR,       'lan_network_address',  \&Socket::inet_ntoa,
-        UCP_CODE_SUBNET_MASK,   'lan_subnet_mask',  \&Socket::inet_ntoa,
-        UCP_CODE_GATEWAY_ADDR,  'lan_gateway',  \&Socket::inet_ntoa,
-    #    UCP_CODE_EIGHT,         undef,
-        UCP_CODE_FIRMWARE_REV,  'firmware_rev',     sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        UCP_CODE_HARDWARE_REV,  'hardware_rev',     sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        UCP_CODE_DEVICE_ID,     'device_id',     sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        UCP_CODE_DEVICE_STATUS, 'device_status',     sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-        UCP_CODE_UUID,          'uuid',     sub{ my ($str) = @_; return unpack( 'a' . length($str), $str ) },
-    );
-    
-    while (@ucp_code_data) {
-        my $code = shift @ucp_code_data;   
-        my $code_name = shift @ucp_code_data;   
-        my $code_unpack = shift @ucp_code_data;
-        $ucp_code_name->{ $code } = $code_name;
-        $ucp_code_unpack->{ $code } = $code_unpack;
-    }
+our $field_help_from_name = {};
+our $field_default_from_name = {};
+our $field_size_from_name = {};
+our $field_name_from_offset = {};
+our $field_offset_from_name = {};
+our $field_pack_from_name = {};
+our $field_unpack_from_offset = {};
 
+while (@device_data) {
+    my $field_name   = shift @device_data;
+    my $field_default = shift @device_data;
+    my $field_help = shift @device_data;
+    my $field_offset = shift @device_data;
+    my $field_size = shift @device_data;
+    my $field_pack   = shift @device_data;
+    my $field_unpack = shift @device_data;
+    $field_default_from_name->{$field_name} = $field_default;
+    $field_help_from_name->{$field_name} = $field_help;
+    $field_name_from_offset->{$field_offset} = $field_name;
+    $field_size_from_name->{$field_name}   = $field_size;
+    $field_offset_from_name->{$field_name}   = $field_offset;
+    $field_pack_from_name->{$field_name} = $field_pack;
+    $field_unpack_from_offset->{$field_offset}   = $field_unpack;
 }
+my @ucp_code_data = (
 
+# name,
+#   constant,
+#   sub to pack
+#   sub to unpack
+#    UCP_CODE_ZERO,             undef,
+#    UCP_CODE_ONE,              undef,
+    'hostname',
+        undef,
+        UCP_CODE_DEVICE_NAME,
+        'Device name',
+        sub{ pack( 'a*', shift ) }, sub{ unpack( 'a*', shift ) },
+    'device_type',
+        undef,
+        UCP_CODE_DEVICE_TYPE,
+        'Device type, (e.g. squeezebox)',
+        sub{ pack( 'a*', shift ) }, sub{ unpack( 'a*', shift ) },
+    'lan_ip_mode',
+        undef,
+        UCP_CODE_USE_DHCP,
+        '0 - Use static IP details, 1 - use DHCP to discover IP details',
+        sub{ pack( 'C', shift ) },  sub{ unpack( 'n', shift ) },
+    'lan_network_address',
+        undef,
+        UCP_CODE_IP_ADDR,
+        'IP address of device, (e.g. 192.168.1.10)',
+        \&Socket::inet_aton,        \&Socket::inet_ntoa,
+    'lan_subnet_mask',
+        undef,
+        UCP_CODE_SUBNET_MASK,
+        'Subnet mask of local network, (e.g. 255.255.255.0)',
+        \&Socket::inet_aton,        \&Socket::inet_ntoa,
+    'lan_gateway',
+        undef,
+        UCP_CODE_GATEWAY_ADDR,
+        'IP address of default network gateway, (e.g. 192.168.1.1)',
+        \&Socket::inet_aton,        \&Socket::inet_ntoa,
+#    UCP_CODE_EIGHT,            undef,
+    'firmware_rev',
+        undef,
+        UCP_CODE_FIRMWARE_REV,
+        'Device firmware revision',
+        sub{ pack( 'a*', shift ) }, sub{ unpack( 'a*', shift ) },
+    'hardware_rev',
+        undef,
+        UCP_CODE_HARDWARE_REV,
+        'Device hardware revision',
+        sub{ pack( 'a*', shift ) }, sub{ unpack( 'a*', shift ) },
+    'device_id',
+        undef,
+        UCP_CODE_DEVICE_ID,
+        'Device ID (??? Do not know what this is)',
+        sub{ pack( 'a*', shift ) }, sub{ unpack( 'a*', shift ) },
+    'device_status',
+        undef,
+        UCP_CODE_DEVICE_STATUS,
+        'Device status, one of: init, wait_wireless, wait_dhcp, wait_slimserver, connected',
+        sub{ pack( 'a*', shift ) }, sub{ unpack( 'a*', shift ) },
+    'uuid',
+        undef,
+        UCP_CODE_UUID,
+        'Device UUID (?????)',
+        sub{ pack( 'a*', shift ) }, sub{ unpack( 'a*', shift ) },
+);
+
+while (@ucp_code_data) {
+    my $code_name = shift @ucp_code_data;
+    my $code_default = shift @ucp_code_data;
+    my $code = shift @ucp_code_data;
+    my $code_help = shift @ucp_code_data;
+    my $code_pack = shift @ucp_code_data;
+    my $code_unpack = shift @ucp_code_data;
+    $ucp_code_name->{ $code } = $code_name;
+    $ucp_code_default->{ $code_name } = $code_default;
+    $ucp_code_help->{ $code_name } = $code_help;
+    $ucp_code_pack->{ $code } = $code_pack;
+    $ucp_code_unpack->{ $code } = $code_unpack;
+}
 1;    # Magic true value required at end of module
 __END__
 

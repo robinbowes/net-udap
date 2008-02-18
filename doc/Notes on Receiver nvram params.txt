@@ -1,0 +1,86 @@
+IP settings:
+
+ lan_ip_mode
+    1 byte - 0 - DHCP, 1 - static ???
+ lan_network_address
+    4 bytes - IP address
+ lan_subnet_mask
+    4 bytes - subnet mask
+ lan_gateway
+    4 bytes = network gateway
+ hostname
+    33 bytes - name to identify player
+ bridging
+    1 byte
+ interface
+    1 byte - 0 = wireless, 1 = wired
+ primary_dns
+    4 bytes - Ip of DNS server
+ secondary_dns
+    4 bytes - IP of secondary DNS
+ server_address
+    4 bytes - current server address, sometimes SC, sometimes SN
+ slimserver_address
+    4 bytes - address of local slimserver
+ slimserver_name
+    33 bytes - name that the server uses to identify itself
+
+The receivers seem have the following wireless settings:
+  wireless_mode   wireless operating mode
+      0x00 - infrastructure
+      0x01 - adhoc
+  SSID            wireless SSID
+      33-byte string containing SSID
+  channel         
+      single byte - not sure what values this takes or if it needs to be set
+  region_id       wireless region id
+      single byte - not sure what values this takes if it needs to be set
+  keylen          WEP key length
+      0x00 - 64-bit
+      0x01 - 128-bit
+  wep_key[0]      WEP key 0
+      13-byte hex string containing key 0
+  wep_key[1]      WEP key 1
+      13-byte hex string containing key 1
+  wep_key[2]      WEP key 2
+      13-byte hex string containing key 2
+  wep_key[3]      WEP key 3
+      13-byte hex string containing key 3
+  wepon           Is WEP enabled?
+      0x00 - off
+      0x01 - on
+  wpa_cipher      Cipher used by WPA? AES/TKIP ??
+      single byte - not sure what settings this takes
+  wpa_mode        WPA mode
+      0x00 - ?
+      0x01 - WPA
+      0x02 - WPA2
+  wpa_enabled     Is WPA enabled?
+      0x00 - off
+      0x01 - on
+  wpa_psk         WPA PSK
+      64-byte string containing PSK
+
+The user will choose the following settings:
+   SSID
+   Wireless Mode
+   Encryption
+   WEP
+       Enter key as string or hex
+       Keylength - 64/128
+       Key 0
+       Key 1 (optional)
+       Key 2 (optional)
+       Key 3 (optional)
+   WPA
+       Cipher?
+       PSK
+   WPA2
+       Cipher
+       PSK
+
+ Questions:
+   - Does the channel need to be set, or is it detected automatically?
+   - Does the region_id need to be set? If so, what values does it take?
+   - What values does wpa_cipher take?
+   - Need to let the user enter WEP key as a string?
