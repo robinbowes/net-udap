@@ -33,7 +33,7 @@ use Net::UDAP::Util;
 
 $| = 1;
 
-my @ips = get_local_ips;
+my @ips = get_local_addresses;
 
 print join ',', @ips;
 print "\n";
