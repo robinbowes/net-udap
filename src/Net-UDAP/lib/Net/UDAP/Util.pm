@@ -28,7 +28,7 @@ use Exporter qw(import);
 
 %EXPORT_TAGS = (
     all => [
-        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip set_blocking )
+        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip set_blocking get_local_ips)
     ]
 );
 Exporter::export_tags('all');
@@ -136,6 +136,30 @@ use Socket;
             croak "error setting socket non-blocking";
         }
         return $sock;
+    }
+    
+    sub get_local_ips {
+        # This is a dirty hack to get IP addresses in use on the system
+        my @ips = qw( );
+        my $syscmd;
+        my $regex;
+        if ($^O =~ /Win/) {
+            $syscmd = 'ipconfig';
+            $regex = qr{/IP Address.*[^:] (.*)$};
+        } else {
+            $syscmd = '/sbin/ifconfig';
+            $regex = qr{inet addr:([^ ]*)};
+        }
+        my @output = qx/$syscmd/;
+        for my $line (@output) {
+            if ($line =~ /$regex/) {
+                my $ip = $1;
+                if ($ip ne '127.0.0.1') {
+                    push @ips, $ip;
+                }
+            }
+        }
+        return @ips;
     }
 
     sub detect_local_ip {
