@@ -135,14 +135,10 @@ __PACKAGE__->mk_accessors( keys %field_default );
                 $self->set_dst_port( substr( $raw_msg, $os + 4, 2 ) );
                 last SWITCH;
             };
-            ( $self->get_dst_addr_type eq ADDR_TYPE_XXX ) && do {
-                log( info => 'Skipping packet sent from this host' );
-                return;
-                };
 
-                # default action if dst address type not recognised
-                croak( 'Unknown dst_addr_type value found: '
-                    . hexstr( $self->get_dst_addr_type, 4 ) );
+            # default action if dst address type not recognised
+            croak( 'Unknown dst_addr_type value found: '
+                . hexstr( $self->get_dst_addr_type, 4 ) );
         }
         $os += 6;
 

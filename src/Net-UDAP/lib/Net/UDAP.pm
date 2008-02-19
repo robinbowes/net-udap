@@ -42,7 +42,7 @@ use base qw(Class::Accessor);
 my %field_default = (
     socket      => undef,
     device_hash => undef,    # store devices in a hash ref
-    local_ip    => undef,
+    local_ips   => undef,    # hash ref of local IPs
 );
 
 __PACKAGE__->follow_best_practice;
@@ -61,8 +61,12 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my $self = bless {%arg}, $class;
 
         $self->set_socket(create_socket);
-        $self->set_local_ip(detect_local_ip);
-        print "Local IP: " . $self->get_local_ip . "\n";
+        
+        # Create a hash keyed on local IP addresses
+        my @local_ips = get_local_addresses;
+        my %temp_hash;
+        @temp_hash{@local_ips} = ();
+        $self->set_local_ips(\%temp_hash);
         return $self;
     }
 
@@ -222,10 +226,6 @@ __PACKAGE__->mk_accessors( keys %field_default );
         log( debug => '    read_UDP triggered' );
 
         my $packet_received = 0;
-        my $local_ip        = $self->get_local_ip;
-        my $local_ip_a      = inet_ntoa($local_ip);
-
-        log( debug => "    local ip: $local_ip_a\n" );
 
         my $select = IO::Select->new( $self->get_socket );
 
@@ -238,12 +238,10 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
                 # get src port and src IP
                 my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
+                my $src_ip_a = inet_ntoa($src_ip);
                 
-                print '$local_ip: ' . inet_ntoa($local_ip) . "\n";
-                print '$src_ip: ' . inet_ntoa($src_ip) . "\n";
-
                 # Don't process packets we sent
-                if ( $src_ip eq $local_ip ) {
+                if ( exists $self->get_local_ips->{$src_ip_a} ) {
                     log(debug => '  Ignoring packet sent from this machine' );
                     next;
                 }
