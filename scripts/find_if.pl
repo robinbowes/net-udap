@@ -35,7 +35,8 @@ $| = 1;
 
 my @ips = get_local_ips;
 
-print join ',', @ips , "\n";
+print join ',', @ips;
+print "\n";
 
 # vim:set softtabstop=4:
 # vim:set shiftwidth=4:
