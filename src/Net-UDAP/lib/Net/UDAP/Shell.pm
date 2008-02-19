@@ -23,6 +23,7 @@ use strict;
 #use Getopt::Long;
 use Data::Dumper;
 use Data::HexDump;
+use File::Spec::Functions;
 
 use version; our $VERSION = qv('0.1');
 
@@ -35,7 +36,7 @@ my %fields_default = (
     num              => 0,
     log              => undef,
     name             => 'UDAP',
-    history_filename => "$ENV{HOME}/.UDAP\_history",
+    history_filename => catfile($ENV{HOME}, '.UDAP_history'),
 );
 
 __PACKAGE__->follow_best_practice;

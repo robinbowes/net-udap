@@ -237,6 +237,9 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
                 # get src port and src IP
                 my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
+                
+                print '$local_ip: ' . inet_ntoa($local_ip) . "\n";
+                print '$src_ip: ' . inet_ntoa($src_ip) . "\n";
 
                 # Don't process packets we sent
                 if ( $src_ip eq $local_ip ) {

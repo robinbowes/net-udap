@@ -28,6 +28,7 @@ use base qw(Class::Accessor);
 
 use Net::UDAP::Constant;
 use Net::UDAP::Log;
+use Net::UDAP::Util;
 
 use Data::Dumper;
 use Data::HexDump;
@@ -93,6 +94,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 # Set values specific to discovery packets
                 $arg{broadcast} = BROADCAST_ON;
                 $arg{dst_mac}   = MAC_ZERO;
+                $arg{src_ip}    = detect_local_ip; 
                 last SWITCH;
                 };
 
