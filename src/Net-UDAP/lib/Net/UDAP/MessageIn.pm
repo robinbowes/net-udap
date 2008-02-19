@@ -73,7 +73,10 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my $self = bless {%arg}, $class;
 
         if ( defined $self->get_raw_msg ) {
-            $self->udap_decode;
+            eval { $self->udap_decode; } or do {
+                carp($@);
+                return;
+                }
         }
         return $self;
     }
@@ -110,8 +113,8 @@ __PACKAGE__->mk_accessors( keys %field_default );
         ( !defined $raw_msg ) && do {
             croak('raw msg not set');
         };
-        
-        print "\$raw_msg in MessageIn::udap_decode\n" . HexDump($raw_msg);
+
+        # print "\$raw_msg in MessageIn::udap_decode\n" . HexDump($raw_msg);
 
         # Initialise offset from start of raw string
         # This is incremented as we read characters from the string
@@ -132,9 +135,13 @@ __PACKAGE__->mk_accessors( keys %field_default );
                 $self->set_dst_port( substr( $raw_msg, $os + 4, 2 ) );
                 last SWITCH;
             };
+            ( $self->get_dst_addr_type eq ADDR_TYPE_XXX ) && do {
+                log( info => 'Skipping packet sent from this host' );
+                return;
+                };
 
-            # default action if dst address type not recognised
-            croak( 'Unknown dst_addr_type value found: '
+                # default action if dst address type not recognised
+                croak( 'Unknown dst_addr_type value found: '
                     . hexstr( $self->get_dst_addr_type, 4 ) );
         }
         $os += 6;

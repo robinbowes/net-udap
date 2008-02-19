@@ -28,7 +28,7 @@ use Exporter qw(import);
 
 %EXPORT_TAGS = (
     ADDR_TYPES =>
-        [qw( ADDR_TYPE_RAW ADDR_TYPE_ETH ADDR_TYPE_UDP ADDR_TYPE_THREE )],
+        [qw( ADDR_TYPE_RAW ADDR_TYPE_ETH ADDR_TYPE_UDP ADDR_TYPE_THREE ADDR_TYPE_XXX )],
     BROADCAST => [qw( BROADCAST_OFF BROADCAST_ON )],
     DHCP      => [qw( DHCP_OFF DHCP_ON )],
     NETWORK   => [qw( DST_TYPE_ETH IP_ZERO MAC_ZERO PORT_UDAP PORT_ZERO )],
@@ -82,6 +82,7 @@ use constant ADDR_TYPE_RAW   => pack( 'CC', 0x00, 0x00 );
 use constant ADDR_TYPE_ETH   => pack( 'CC', 0x00, 0x01 );
 use constant ADDR_TYPE_UDP   => pack( 'CC', 0x00, 0x02 );
 use constant ADDR_TYPE_THREE => pack( 'CC', 0x00, 0x03 );
+use constant ADDR_TYPE_XXX   => pack( 'CC', 0x01, 0x01 );
 
 # Broadcast
 use constant BROADCAST_OFF => pack( 'C', 0x00 );

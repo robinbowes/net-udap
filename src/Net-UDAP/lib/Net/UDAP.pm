@@ -21,7 +21,7 @@ use warnings;
 use strict;
 use Carp;
 use IO::Select;
-use IO::Socket;
+use IO::Socket::INET;
 use Time::HiRes;
 
 use Data::Dumper;
@@ -62,6 +62,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
         $self->set_socket(create_socket);
         $self->set_local_ip(detect_local_ip);
+        print "Local IP: " . $self->get_local_ip . "\n";
         return $self;
     }
 
@@ -280,10 +281,10 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my $msg_ref;
         eval {
             $msg_ref = Net::UDAP::MessageIn->new( { raw_msg => $raw_msg } );
-            }
-            or do {
-            carp($@);
-            return;
+            } or return;
+            if ($@) {
+                carp($@);
+                return;
             };
 
         my $method = $msg_ref->get_ucp_method;
