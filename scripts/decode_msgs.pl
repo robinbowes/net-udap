@@ -33,7 +33,7 @@ use Net::UDAP::MessageIn;
 while (<>) {
     next if /^#/;
     # convert to binary data
-    my $raw_msg = pack( 'h*', $_ );
+    my $raw_msg = pack( 'H*', $_ );
     my $arg_ref = {};
     $arg_ref->{raw_msg} = $raw_msg;
     my $msg = Net::UDAP::MessageIn->new( $arg_ref );

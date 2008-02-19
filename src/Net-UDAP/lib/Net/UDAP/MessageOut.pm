@@ -36,9 +36,10 @@ use Data::HexDump;
 my %fields_default = (
 
     # define fields and default values here
-    broadcast   => BROADCAST_OFF,
+    dst_broadcast   => BROADCAST_OFF,
     dst_type    => DST_TYPE_ETH,
     dst_mac     => undef,
+    src_broadcast => BROADCAST_OFF,
     src_type    => ADDR_TYPE_UDP,
     src_ip      => IP_ZERO,
     src_port    => PORT_ZERO,
@@ -92,7 +93,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 && do {
 
                 # Set values specific to discovery packets
-                $arg{broadcast} = BROADCAST_ON;
+                $arg{dst_broadcast} = BROADCAST_ON;
                 $arg{dst_mac}   = MAC_ZERO;
                 $arg{src_ip}    = detect_local_ip; 
                 last SWITCH;
@@ -156,9 +157,10 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         my $self = shift;
 
         # The first part of the msg is same for all msg types
-        my $str .= $self->get_broadcast;
+        my $str .= $self->get_dst_broadcast;
         $str    .= $self->get_dst_type;
         $str    .= $self->get_dst_mac;     # mac stored packed
+        $str    .= $self->get_src_broadcast;
         $str    .= $self->get_src_type;
         $str    .= $self->get_src_ip;
         $str    .= $self->get_src_port;

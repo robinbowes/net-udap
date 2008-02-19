@@ -78,11 +78,10 @@ our $ucp_code_pack = {};
 our $ucp_code_unpack = {};
 
 # Address Types
-use constant ADDR_TYPE_RAW   => pack( 'CC', 0x00, 0x00 );
-use constant ADDR_TYPE_ETH   => pack( 'CC', 0x00, 0x01 );
-use constant ADDR_TYPE_UDP   => pack( 'CC', 0x00, 0x02 );
-use constant ADDR_TYPE_THREE => pack( 'CC', 0x00, 0x03 );
-use constant ADDR_TYPE_XXX   => pack( 'CC', 0x01, 0x01 );
+use constant ADDR_TYPE_RAW   => pack( 'C', 0x00 );
+use constant ADDR_TYPE_ETH   => pack( 'C', 0x01 );
+use constant ADDR_TYPE_UDP   => pack( 'C', 0x02 );
+use constant ADDR_TYPE_THREE => pack( 'C', 0x03 );
 
 # Broadcast
 use constant BROADCAST_OFF => pack( 'C', 0x00 );
@@ -268,7 +267,7 @@ my @device_data = (
         sub{ pack( 'C', shift ) },  sub{ unpack( 'b', shift ) },
     'wireless_keylen',
         undef,
-        'Length of wireless key',
+        'Length of wireless key, (0 - 64-bit, 1 - 128-bit)',
         220, 1,
         sub{ pack( 'C', shift ) },  sub{ unpack( 'b', shift ) },
     'wireless_wep_key_0',

@@ -34,10 +34,12 @@ use base qw(Class::Accessor);
 
 my %field_default = (
     raw_msg         => undef,
+    dst_broadcast   => undef,
     dst_addr_type   => undef,
     dst_mac         => undef,
     dst_ip          => undef,
     dst_port        => undef,
+    src_broadcast   => undef,
     src_addr_type   => undef,
     src_mac         => undef,
     src_ip          => undef,
@@ -120,9 +122,13 @@ __PACKAGE__->mk_accessors( keys %field_default );
         # This is incremented as we read characters from the string
         my $os = 0;
 
+        # get dst_broadcast
+        $self->set_dst_broadcast( substr( $raw_msg, $os, 1 ) );
+        $os += 1;
+        
         # get dst addr type
-        $self->set_dst_addr_type( substr( $raw_msg, $os, 2 ) );
-        $os += 2;
+        $self->set_dst_addr_type( substr( $raw_msg, $os, 1 ) );
+        $os += 1;
 
      # get *either* dst mac *or* dst IP + port, depending on the dst_addr_type
     SWITCH: {
@@ -142,9 +148,13 @@ __PACKAGE__->mk_accessors( keys %field_default );
         }
         $os += 6;
 
+        # get src_broadcast
+        $self->set_src_broadcast( substr( $raw_msg, $os, 1 ) );
+        $os += 1;
+        
         # get src addr type
-        $self->set_src_addr_type( substr( $raw_msg, $os, 2 ) );
-        $os += 2;
+        $self->set_src_addr_type( substr( $raw_msg, $os, 1 ) );
+        $os += 1;
 
      # get *either* src mac *or* src IP + port, depending on the src_addr_type
     SWITCH: {
