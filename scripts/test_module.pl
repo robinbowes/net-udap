@@ -24,7 +24,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
-use version; our $VERSION = qv('0.1');
+use version; our $VERSION = qv('1.0_01');
 
 use Carp;
 use Data::Dumper;
