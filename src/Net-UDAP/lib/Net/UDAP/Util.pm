@@ -143,7 +143,8 @@ use Socket;
         my @ips = qw( );
         my $syscmd;
         my $regex;
-        if ($^O =~ /Win/) {
+        # Use ipconfig on Windows + under cygwin
+        if ($^O =~ /Win|cygwin/) {
             $syscmd = 'ipconfig';
 	    $regex = qr{IP Address.* ((?:\d{1,3}\.){3}\d{1,3})};
         } else {
