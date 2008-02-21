@@ -17,15 +17,19 @@ package Net::UDAP::Shell;
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use warnings;
 use strict;
+use warnings;
+
+# Add the modules to the libpath
+use FindBin;
+use lib "$FindBin::Bin/../src/Net-UDAP/lib";
+
+use version; our $VERSION = qv('0.1');
 
 #use Getopt::Long;
 use Data::Dumper;
 use Data::HexDump;
 use File::Spec::Functions;
-
-use version; our $VERSION = qv('0.1');
 
 use base qw(
     Term::Shell

@@ -19,16 +19,15 @@
 
 use strict;
 use warnings;
-use Carp;
-
-use version; our $VERSION = qv('0.1');
-
-use Data::Dumper;
 
 # Add the modules to the libpath
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
+use version; our $VERSION = qv('0.1');
+
+use Carp;
+use Data::Dumper;
 use Net::UDAP;
 use Net::UDAP::Constant;
 

@@ -17,12 +17,17 @@ package Net::UDAP::Log;
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use warnings;
 use strict;
+use warnings;
+
+# Add the modules to the libpath
+use FindBin;
+use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
 use version; our $VERSION = qv('0.1');
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
+
 use Exporter qw(import);
 
 %EXPORT_TAGS = ( all => [qw( log )] );

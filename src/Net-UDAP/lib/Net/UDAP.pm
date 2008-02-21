@@ -17,27 +17,31 @@ package Net::UDAP;
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use warnings;
 use strict;
-use Carp;
-use IO::Select;
-use IO::Socket::INET;
-use Time::HiRes;
+use warnings;
 
-use Data::Dumper;
-use Data::HexDump;
+# Add the modules to the libpath
+use FindBin;
+use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
 use version; our $VERSION = qv('0.1');
 
+use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
+use base qw(Class::Accessor);
+
+use Carp;
+use Data::Dumper;
+use Data::HexDump;
+use IO::Select;
+use IO::Socket::INET;
 use Net::UDAP::Client;
 use Net::UDAP::Constant;
 use Net::UDAP::Log;
 use Net::UDAP::MessageIn;
 use Net::UDAP::MessageOut;
 use Net::UDAP::Util;
+use Time::HiRes;
 
-use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
-use base qw(Class::Accessor);
 
 my %field_default = (
     socket      => undef,

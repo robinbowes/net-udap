@@ -17,17 +17,20 @@ package Net::UDAP::Client;
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use warnings;
 use strict;
-use Carp;
-use Data::Dumper;
+use warnings;
+
+# Add the modules to the libpath
+use FindBin;
+use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
 use version; our $VERSION = qv('0.1');
 
-# Module implementation here
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
+use Carp;
+use Data::Dumper;
 use Net::UDAP::Constant;
 use Net::UDAP::Log;
 use Net::UDAP::Util;
