@@ -294,7 +294,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
             if ( exists $ucp_method_name->{ $self->get_ucp_method } ) {
                 carp(     'ucp_method '
                         . $ucp_method_name->{ $self->get_ucp_method }
-                        . ' not implemented yet' );
+                        . ' callback not implemented yet' );
                 print "Raw msg:\n" . HexDump($raw_msg);
             }
             else {

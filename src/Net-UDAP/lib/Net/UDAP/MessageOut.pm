@@ -127,7 +127,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
             ( $method eq UCP_METHOD_RESET ) && do {
 
-                carp "Creating reset msg not implemented yet";
+                # Nothing more to do for reset method
 
                 last SWITCH;
             };

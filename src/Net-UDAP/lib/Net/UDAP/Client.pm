@@ -91,11 +91,16 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             = @{%$self}{ keys %$field_default_from_name };
     }
 
-    sub save {
+    sub save_data {
         my ( $self, $udap ) = @_;
         my $device_mac  = $self->get_mac;
         my $data_to_set = $self->get_modified_fields;
         $udap->set_data( $device_mac, { data_to_set => $self->get_modified_fields } );
+    }
+    sub save_ip {
+        my ( $self, $udap ) = @_;
+        my $device_mac  = $self->get_mac;
+        my $data_to_set = $self->get_modified_fields;
         $udap->set_ip( $device_mac, { data_to_set => {
             lan_network_address => $self->get_lan_network_address,
             lan_subnet_mask => $self->get_lan_subnet_mask,
@@ -120,10 +125,9 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 and defined($oldval)
                 and $newval ne $oldval )
             {
-                $modified_fields->{$fieldname} = $newval;
             }
+                $modified_fields->{$fieldname} = $newval;
         }
-        print "Modified fields:\n" . Dumper $modified_fields;
         return $modified_fields;
     }
 

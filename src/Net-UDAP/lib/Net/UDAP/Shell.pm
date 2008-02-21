@@ -208,28 +208,28 @@ sub run_set {
     }
 }
 
-######## Save ########
+######## save_data ########
 
-sub smry_save {'Save parameters to device(s)'}
+sub smry_save_data {'Save data parameters to device(s)'}
 
-sub help_save {
+sub help_save_data {
     <<'END' }
 In global mode:
-    save [all] - save parameters to all devices
-    save [n]   - save parameters to device n
+    save [all] - save data parameters to all devices
+    save [n]   - save data parameters to device n
 END
 
-sub run_save {
+sub run_save_data {
     my ( $self, @args ) = @_;
     my $nargs = scalar(@args);
     if ( defined $current_device ) {
 
         # configure mode
         if ( $nargs == 0 ) {
-            $device_list[$current_device]->save($udap);
+            $device_list[$current_device]->save_data($udap);
         }
         else {
-            print "Syntax error in save command\n";
+            print "Syntax error in save_data command\n";
         }
 
     }
@@ -248,16 +248,69 @@ sub run_save {
                 )
                 and do {
                 foreach my $device (@device_list) {
-                    $device->save($udap);
+                    $device->save_data($udap);
                 }
                 last SWITCH;
                 };
-            print "Syntax error in save command\n";
+            print "Syntax error in save_data command\n";
         }
 
         # global mode
     }
 }
+
+######## save_ip ########
+
+sub smry_save_ip {'Save ip parameters to device(s)'}
+
+sub help_save_ip {
+    <<'END' }
+In global mode:
+    save [all] - save ip parameters to all devices
+    save [n]   - save ip parameters to device n
+END
+
+sub run_save_ip {
+    my ( $self, @args ) = @_;
+    my $nargs = scalar(@args);
+    if ( defined $current_device ) {
+
+        # configure mode
+        if ( $nargs == 0 ) {
+            $device_list[$current_device]->save_ip($udap);
+        }
+        else {
+            print "Syntax error in save_ip command\n";
+        }
+
+    }
+    else {
+    SWITCH: {
+            ( $nargs == 0 )
+                or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) ) and do {
+
+                last SWITCH;
+                };
+            (           ( $nargs == 1 )
+                    and ( looks_like_number( $args[0] ) )
+                    and (
+                    ref( $device_list[ $args[0] - 1 ] ) eq
+                    'Net::UDAP::Client' )
+                )
+                and do {
+                foreach my $device (@device_list) {
+                    $device->save_ip($udap);
+                }
+                last SWITCH;
+                };
+            print "Syntax error in save_ip command\n";
+        }
+
+        # global mode
+    }
+}
+
+######## reset ########
 
 sub smry_reset {'Reset a device'}
 
