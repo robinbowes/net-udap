@@ -310,7 +310,7 @@ my @device_data = (
         '1 - WPA, 2 - WPA2',
         276, 1,
         sub{ pack( 'C', shift ) },  sub{ unpack( 'C', shift ) },
-    'wireless_wpa_enabled',
+    'wireless_wpa_on',
         undef,
         '0 - WPA Off, 1 - WPA On',
         277, 1,
