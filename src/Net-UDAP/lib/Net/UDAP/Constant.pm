@@ -302,7 +302,7 @@ my @device_data = (
         sub{ pack( 'C', shift ) },  sub{ unpack( 'C', shift ) },
     'wireless_wpa_cipher',
         undef,
-        '1 - CCMP, 2 - TKIP',
+        '1 - TKIP, 2 - AES, 3 - TKIP & AES',
         275, 1,
         sub{ pack( 'C', shift ) },  sub{ unpack( 'C', shift ) },
     'wireless_wpa_mode',
