@@ -91,10 +91,10 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 #my $temphash = {};
 #@$temphash{keys %$field_default_from_name} = @{%$self}{ keys %$field_default_from_name };
         warn "\$self:\n" . Dumper \$self;
-        my %fields_from_device_hash = $self->get_fields_from_device;
-        warn "fields_from_device hash:\n" . Dumper \%fields_from_device_hash;
+        my $fields_from_device_hash = $self->get_fields_from_device;
+        warn "fields_from_device hash:\n" . Dumper \%$fields_from_device_hash;
         warn "field_default_from_name hash:\n" . Dumper \$field_default_from_name;
-        @{ $self->get_fields_from_device }{ keys %$field_default_from_name }
+        @{ %{$self->get_fields_from_device} }{ keys %$field_default_from_name }
             = @{%$self}{ keys %$field_default_from_name };
     }
 
