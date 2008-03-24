@@ -40,7 +40,7 @@ my %fields_default = (
     num              => 0,
     log              => undef,
     name             => 'UDAP',
-    history_filename => catfile($ENV{HOME}, '.UDAP_history'),
+    history_filename => catfile( $ENV{HOME}, '.UDAP_history' ),
 );
 
 __PACKAGE__->follow_best_practice;
@@ -379,7 +379,7 @@ sub run_reset {
 ######## List ########
 
 sub smry_list {
-    'List discovered devices, or a specific information about a device'
+    'List discovered devices, or a specific information about a device';
 }
 
 sub help_list {

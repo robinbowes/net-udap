@@ -277,9 +277,9 @@ __PACKAGE__->mk_accessors( keys %field_default );
                         substr( $raw_msg, $os, $data_length ) );
                     $os += $data_length;
                     
-                    if ($field_name_from_offset->{$param_offset} eq 'squeezecenter_name') {
-                        print "squeezecenter_name data string in MessageIn::udap_decode", HexDump($data_string);
-                    };
+                    #if ($field_name_from_offset->{$param_offset} eq 'squeezecenter_name') {
+                    #    print "squeezecenter_name data string in MessageIn::udap_decode", HexDump($data_string);
+                    #};
 
                     log( debug => "    data string: $data_string\n" );
 

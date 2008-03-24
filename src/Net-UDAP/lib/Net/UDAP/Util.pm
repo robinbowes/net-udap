@@ -54,6 +54,7 @@ use Socket;
         # $separator	- the string to use as separator in the output string
         my ( $rawstr, $strlen, $fmt, $separator ) = @_;
         $separator = '' if !defined $separator;
+        return '**unknown**' if !$rawstr;
         if ( length($rawstr) == $strlen ) {
             my @parts = unpack( "($fmt)*", $rawstr );
             if (wantarray) {
@@ -142,25 +143,28 @@ use Socket;
         }
         return $sock;
     }
-    
+
     sub get_local_addresses {
+
         # This is a dirty hack to get IP addresses in use on the system
         my @ips = qw( );
         my $syscmd;
         my $regex;
+
         # Use ipconfig on Windows + under cygwin
-        if ($^O =~ /Win|cygwin/) {
+        if ( $^O =~ /Win|cygwin/ ) {
             $syscmd = 'ipconfig';
-	    $regex = qr{IP Address.* ((?:\d{1,3}\.){3}\d{1,3})};
-        } else {
+            $regex  = qr{IP Address.* ((?:\d{1,3}\.){3}\d{1,3})};
+        }
+        else {
             $syscmd = '/sbin/ifconfig';
-            $regex = qr{inet addr:((?:\d{1,3}\.){3}\d{1,3})};
+            $regex  = qr{inet addr:((?:\d{1,3}\.){3}\d{1,3})};
         }
         my @output = qx/$syscmd/;
         for my $line (@output) {
-            if ($line =~ /$regex/) {
+            if ( $line =~ /$regex/ ) {
                 my $ip = $1;
-                if ($ip ne '127.0.0.1') {
+                if ( $ip ne '127.0.0.1' ) {
                     push @ips, $ip;
                 }
             }
@@ -204,7 +208,8 @@ use Socket;
 
         connect( $sock, $paddr ) || do {
             log( warn =>
-                    "    Couldn't call connect() - falling back to $localhost" );
+                    "    Couldn't call connect() - falling back to $localhost"
+            );
             return $localhost;
         };
 

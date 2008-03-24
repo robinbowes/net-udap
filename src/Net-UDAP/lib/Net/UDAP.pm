@@ -42,7 +42,6 @@ use Net::UDAP::MessageOut;
 use Net::UDAP::Util;
 use Time::HiRes;
 
-
 my %field_default = (
     socket      => undef,
     device_hash => undef,    # store devices in a hash ref
@@ -65,12 +64,12 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my $self = bless {%arg}, $class;
 
         $self->set_socket(create_socket);
-        
+
         # Create a hash keyed on local IP addresses
         my @local_ips = get_local_addresses;
         my %temp_hash;
         @temp_hash{@local_ips} = ();
-        $self->set_local_ips(\%temp_hash);
+        $self->set_local_ips( \%temp_hash );
         return $self;
     }
 
@@ -163,8 +162,9 @@ __PACKAGE__->mk_accessors( keys %field_default );
             $self->read_responses;
         }
         return;
-        
+
     }
+
     sub send_msg {
         my ( $self, $mac, $ucp_method, $arg_ref ) = @_;
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
@@ -184,7 +184,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
             croak(
                 'Must specify mac address for $ucp_method_name->{$ucp_method} packets'
             ) if !defined $mac;
-            $encoded_mac = encode_mac( $mac );
+            $encoded_mac = encode_mac($mac);
         }
 
         my $msg_ref;
@@ -243,7 +243,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
                 # get src port and src IP
                 my ( $src_port, $src_ip ) = sockaddr_in($clientpaddr);
                 my $src_ip_a = inet_ntoa($src_ip);
-                
+
                 # Don't process packets we sent
                 if ( exists $self->get_local_ips->{$src_ip_a} ) {
                     log(debug => '  Ignoring packet sent from this machine' );
@@ -283,16 +283,16 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my $msg_ref;
         eval {
             $msg_ref = Net::UDAP::MessageIn->new( { raw_msg => $raw_msg } );
-            } or return;
-            if ($@) {
-                carp($@);
-                return;
-            };
+        } or return;
+        if ($@) {
+            carp($@);
+            return;
+        }
 
-        my $method = $msg_ref->get_ucp_method;
-
+        my $method  = $msg_ref->get_ucp_method;
         my $handler = $METHOD{$method}
             || croak('ucp_method invalid or not defined.');
+
         my $mac = decode_mac( $msg_ref->get_src_mac );
         log( info =>
                 "  $ucp_method_name->{$method} response received from $mac\n"

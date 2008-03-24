@@ -39,19 +39,19 @@ use Net::UDAP::Util;
 my %fields_default = (
 
     # define fields and default values here
-    dst_broadcast   => BROADCAST_OFF,
-    dst_type    => DST_TYPE_ETH,
-    dst_mac     => undef,
+    dst_broadcast => BROADCAST_OFF,
+    dst_type      => DST_TYPE_ETH,
+    dst_mac       => undef,
     src_broadcast => BROADCAST_OFF,
-    src_type    => ADDR_TYPE_UDP,
-    src_ip      => IP_ZERO,
-    src_port    => PORT_ZERO,
-    seq         => pack( 'n', 0x0001 ),        # unused
-    udap_type   => UDAP_TYPE_UCP,
-    ucp_flags   => pack( 'C', 0x01 ),          # unused?
-    ucp_class   => UAP_CLASS_UCP,
-    ucp_method  => undef,
-    credentials => pack( 'C32', 0x00 x 32 ),
+    src_type      => ADDR_TYPE_UDP,
+    src_ip        => IP_ZERO,
+    src_port      => PORT_ZERO,
+    seq           => pack( 'n', 0x0001 ),        # unused
+    udap_type     => UDAP_TYPE_UCP,
+    ucp_flags     => pack( 'C', 0x01 ),          # unused?
+    ucp_class     => UAP_CLASS_UCP,
+    ucp_method    => undef,
+    credentials   => pack( 'C32', 0x00 x 32 ),
     data_to_get => undef,  # store data to get as an anon array of param names
     data_to_set => undef,  # store data to set as an anon hash
 );
@@ -97,8 +97,8 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
                 # Set values specific to discovery packets
                 $arg{dst_broadcast} = BROADCAST_ON;
-                $arg{dst_mac}   = MAC_ZERO;
-                $arg{src_ip}    = detect_local_ip; 
+                $arg{dst_mac}       = MAC_ZERO;
+                $arg{src_ip}        = detect_local_ip;
                 last SWITCH;
                 };
 
@@ -162,7 +162,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         # The first part of the msg is same for all msg types
         my $str .= $self->get_dst_broadcast;
         $str    .= $self->get_dst_type;
-        $str    .= $self->get_dst_mac;     # mac stored packed
+        $str    .= $self->get_dst_mac;         # mac stored packed
         $str    .= $self->get_src_broadcast;
         $str    .= $self->get_src_type;
         $str    .= $self->get_src_ip;
@@ -242,19 +242,23 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 last SWITCH;
             };
             ( $method eq UCP_METHOD_SET_IP ) && do {
-                
+
                 # set_ip data is in the following format:
                 #  - ip address
                 #  - subnet mask
                 #  - gateway
                 #  - ip mode (DHCP or static)
                 my $data = $self->get_data_to_set;
-                foreach my $fieldname ( qw(lan_network_address lan_subnet_mask lan_gateway lan_ip_mode) ) {
-                    $str .= $field_pack_from_name->$data->{$fieldname}->($self->get_data_to_set->{$fieldname});
+                foreach my $fieldname (
+                    qw(lan_network_address lan_subnet_mask lan_gateway lan_ip_mode)
+                    )
+                {
+                    $str .= $field_pack_from_name->$data->{$fieldname}
+                        ->( $self->get_data_to_set->{$fieldname} );
                 }
                 last SWITCH;
             };
-            
+
             log(      error => '  msg method '
                     . $ucp_method_name->{$method}
                     . " not implemented\n" );
