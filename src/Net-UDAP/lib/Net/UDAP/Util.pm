@@ -54,7 +54,6 @@ use Socket;
         # $separator	- the string to use as separator in the output string
         my ( $rawstr, $strlen, $fmt, $separator ) = @_;
         $separator = '' if !defined $separator;
-        return '**unknown**' if !$rawstr;
         if ( length($rawstr) == $strlen ) {
             my @parts = unpack( "($fmt)*", $rawstr );
             if (wantarray) {
@@ -65,7 +64,9 @@ use Socket;
             }
         }
         else {
-            carp "Expecting string with length: $strlen";
+            carp 'Supplied string has length'
+                . length($rawstr)
+                . "(expected length: $strlen)";
             return undef;
         }
     }
