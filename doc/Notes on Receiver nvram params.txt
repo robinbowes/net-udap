@@ -84,3 +84,5 @@ The user will choose the following settings:
    - Does the region_id need to be set? If so, what values does it take?
    - What values does wpa_cipher take?
    - Need to let the user enter WEP key as a string?
+
+Small change to test check-in process
