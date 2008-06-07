@@ -64,9 +64,9 @@ use Socket;
             }
         }
         else {
-            carp 'Supplied string has length'
+            carp 'Supplied string has length '
                 . length($rawstr)
-                . "(expected length: $strlen)";
+                . " (expected length: $strlen)";
             return undef;
         }
     }
