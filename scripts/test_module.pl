@@ -49,7 +49,7 @@ my $udap = Net::UDAP->new;
 $udap->discover( { advanced => 1 } );
 
 # Get the hash of discovered devices
-my $discovered_devices_ref = $udap->get_devices;
+my $discovered_devices_ref = $udap->get_device_list;
 
 if ($discovered_devices_ref) {
 
