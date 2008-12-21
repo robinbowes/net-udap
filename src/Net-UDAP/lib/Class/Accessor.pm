@@ -113,13 +113,13 @@ your object.  Don't like it?  Override it.
 =cut
 
 sub new {
-    my($proto, $fields) = @_;
-    my($class) = ref $proto || $proto;
+	my ( $proto, $fields ) = @_;
+	my ($class) = ref $proto || $proto;
 
-    $fields = {} unless defined $fields;
+	$fields = {} unless defined $fields;
 
-    # make a copy of $fields.
-    bless {%$fields}, $class;
+	# make a copy of $fields.
+	bless {%$fields}, $class;
 }
 
 =head2 mk_accessors
@@ -140,61 +140,69 @@ for details.
 =cut
 
 sub mk_accessors {
-    my($self, @fields) = @_;
+	my ( $self, @fields ) = @_;
 
-    $self->_mk_accessors('rw', @fields);
+	$self->_mk_accessors( 'rw', @fields );
 }
 
-
 {
-    no strict 'refs';
+	no strict 'refs';
 
-    sub _mk_accessors {
-        my($self, $access, @fields) = @_;
-        my $class = ref $self || $self;
-        my $ra = $access eq 'rw' || $access eq 'ro';
-        my $wa = $access eq 'rw' || $access eq 'wo';
+	sub _mk_accessors {
+		my ( $self, $access, @fields ) = @_;
+		my $class = ref $self || $self;
+		my $ra = $access eq 'rw' || $access eq 'ro';
+		my $wa = $access eq 'rw' || $access eq 'wo';
 
-        foreach my $field (@fields) {
-            my $accessor_name = $self->accessor_name_for($field);
-            my $mutator_name = $self->mutator_name_for($field);
-            if( $accessor_name eq 'DESTROY' or $mutator_name eq 'DESTROY' ) {
-                $self->_carp("Having a data accessor named DESTROY  in '$class' is unwise.");
-            }
-            if ($accessor_name eq $mutator_name) {
-                my $accessor;
-                if ($ra && $wa) {
-                    $accessor = $self->make_accessor($field);
-                } elsif ($ra) {
-                    $accessor = $self->make_ro_accessor($field);
-                } else {
-                    $accessor = $self->make_wo_accessor($field);
-                }
-                unless (defined &{"${class}::$accessor_name"}) {
-                    *{"${class}::$accessor_name"} = $accessor;
-                }
-                if ($accessor_name eq $field) {
-                    # the old behaviour
-                    my $alias = "_${field}_accessor";
-                    *{"${class}::$alias"} = $accessor unless defined &{"${class}::$alias"};
-                }
-            } else {
-                if ($ra and not defined &{"${class}::$accessor_name"}) {
-                    *{"${class}::$accessor_name"} = $self->make_ro_accessor($field);
-                }
-                if ($wa and not defined &{"${class}::$mutator_name"}) {
-                    *{"${class}::$mutator_name"} = $self->make_wo_accessor($field);
-                }
-            }
-        }
-    }
+		foreach my $field (@fields) {
+			my $accessor_name = $self->accessor_name_for($field);
+			my $mutator_name  = $self->mutator_name_for($field);
+			if ( $accessor_name eq 'DESTROY' or $mutator_name eq 'DESTROY' ) {
+				$self->_carp(
+					"Having a data accessor named DESTROY  in '$class' is unwise."
+				);
+			}
+			if ( $accessor_name eq $mutator_name ) {
+				my $accessor;
+				if ( $ra && $wa ) {
+					$accessor = $self->make_accessor($field);
+				}
+				elsif ($ra) {
+					$accessor = $self->make_ro_accessor($field);
+				}
+				else {
+					$accessor = $self->make_wo_accessor($field);
+				}
+				unless ( defined &{"${class}::$accessor_name"} ) {
+					*{"${class}::$accessor_name"} = $accessor;
+				}
+				if ( $accessor_name eq $field ) {
 
-    sub follow_best_practice {
-        my($self) = @_;
-        my $class = ref $self || $self;
-        *{"${class}::accessor_name_for"}  = \&best_practice_accessor_name_for;
-        *{"${class}::mutator_name_for"}  = \&best_practice_mutator_name_for;
-    }
+					# the old behaviour
+					my $alias = "_${field}_accessor";
+					*{"${class}::$alias"} = $accessor
+						unless defined &{"${class}::$alias"};
+				}
+			}
+			else {
+				if ( $ra and not defined &{"${class}::$accessor_name"} ) {
+					*{"${class}::$accessor_name"}
+						= $self->make_ro_accessor($field);
+				}
+				if ( $wa and not defined &{"${class}::$mutator_name"} ) {
+					*{"${class}::$mutator_name"}
+						= $self->make_wo_accessor($field);
+				}
+			}
+		}
+	}
+
+	sub follow_best_practice {
+		my ($self) = @_;
+		my $class = ref $self || $self;
+		*{"${class}::accessor_name_for"} = \&best_practice_accessor_name_for;
+		*{"${class}::mutator_name_for"}  = \&best_practice_mutator_name_for;
+	}
 
 }
 
@@ -219,9 +227,9 @@ set().
 =cut
 
 sub mk_ro_accessors {
-    my($self, @fields) = @_;
+	my ( $self, @fields ) = @_;
 
-    $self->_mk_accessors('ro', @fields);
+	$self->_mk_accessors( 'ro', @fields );
 }
 
 =head2 mk_wo_accessors
@@ -247,9 +255,9 @@ for orthoginality and because its easy to implement.
 =cut
 
 sub mk_wo_accessors {
-    my($self, @fields) = @_;
+	my ( $self, @fields ) = @_;
 
-    $self->_mk_accessors('wo', @fields);
+	$self->_mk_accessors( 'wo', @fields );
 }
 
 =head1 DETAILS
@@ -290,23 +298,23 @@ your subclass.  (I copied that idea from Class::DBI.)
 =cut
 
 sub best_practice_accessor_name_for {
-    my ($class, $field) = @_;
-    return "get_$field";
+	my ( $class, $field ) = @_;
+	return "get_$field";
 }
 
 sub best_practice_mutator_name_for {
-    my ($class, $field) = @_;
-    return "set_$field";
+	my ( $class, $field ) = @_;
+	return "set_$field";
 }
 
 sub accessor_name_for {
-    my ($class, $field) = @_;
-    return $field;
+	my ( $class, $field ) = @_;
+	return $field;
 }
 
 sub mutator_name_for {
-    my ($class, $field) = @_;
-    return $field;
+	my ( $class, $field ) = @_;
+	return $field;
 }
 
 =head2 Modifying the behavior of the accessor
@@ -329,17 +337,17 @@ override this method to change how data is stored by your accessors.
 =cut
 
 sub set {
-    my($self, $key) = splice(@_, 0, 2);
+	my ( $self, $key ) = splice( @_, 0, 2 );
 
-    if(@_ == 1) {
-        $self->{$key} = $_[0];
-    }
-    elsif(@_ > 1) {
-        $self->{$key} = [@_];
-    }
-    else {
-        $self->_croak("Wrong number of arguments received");
-    }
+	if ( @_ == 1 ) {
+		$self->{$key} = $_[0];
+	}
+	elsif ( @_ > 1 ) {
+		$self->{$key} = [@_];
+	}
+	else {
+		$self->_croak("Wrong number of arguments received");
+	}
 }
 
 =head2 get
@@ -354,17 +362,17 @@ override this method to change how it is retreived.
 =cut
 
 sub get {
-    my $self = shift;
+	my $self = shift;
 
-    if(@_ == 1) {
-        return $self->{$_[0]};
-    }
-    elsif( @_ > 1 ) {
-        return @{$self}{@_};
-    }
-    else {
-        $self->_croak("Wrong number of arguments received");
-    }
+	if ( @_ == 1 ) {
+		return $self->{ $_[0] };
+	}
+	elsif ( @_ > 1 ) {
+		return @{$self}{@_};
+	}
+	else {
+		$self->_croak("Wrong number of arguments received");
+	}
 }
 
 =head2 make_accessor
@@ -380,19 +388,19 @@ get() and set() before you start mucking with make_accessor().
 =cut
 
 sub make_accessor {
-    my ($class, $field) = @_;
+	my ( $class, $field ) = @_;
 
-    # Build a closure around $field.
-    return sub {
-        my $self = shift;
+	# Build a closure around $field.
+	return sub {
+		my $self = shift;
 
-        if(@_) {
-            return $self->set($field, @_);
-        }
-        else {
-            return $self->get($field);
-        }
-    };
+		if (@_) {
+			return $self->set( $field, @_ );
+		}
+		else {
+			return $self->get($field);
+		}
+	};
 }
 
 =head2 make_ro_accessor
@@ -407,19 +415,21 @@ Override get() to change the behavior of your accessors.
 =cut
 
 sub make_ro_accessor {
-    my($class, $field) = @_;
+	my ( $class, $field ) = @_;
 
-    return sub {
-        my $self = shift;
+	return sub {
+		my $self = shift;
 
-        if (@_) {
-            my $caller = caller;
-            $self->_croak("'$caller' cannot alter the value of '$field' on objects of class '$class'");
-        }
-        else {
-            return $self->get($field);
-        }
-    };
+		if (@_) {
+			my $caller = caller;
+			$self->_croak(
+				"'$caller' cannot alter the value of '$field' on objects of class '$class'"
+			);
+		}
+		else {
+			return $self->get($field);
+		}
+	};
 }
 
 =head2 make_wo_accessor
@@ -434,19 +444,21 @@ Override set() to change the behavior of your accessors.
 =cut
 
 sub make_wo_accessor {
-    my($class, $field) = @_;
+	my ( $class, $field ) = @_;
 
-    return sub {
-        my $self = shift;
+	return sub {
+		my $self = shift;
 
-        unless (@_) {
-            my $caller = caller;
-            $self->_croak("'$caller' cannot access the value of '$field' on objects of class '$class'");
-        }
-        else {
-            return $self->set($field, @_);
-        }
-    };
+		unless (@_) {
+			my $caller = caller;
+			$self->_croak(
+				"'$caller' cannot access the value of '$field' on objects of class '$class'"
+			);
+		}
+		else {
+			return $self->set( $field, @_ );
+		}
+	};
 }
 
 =head1 EXCEPTIONS
@@ -460,15 +472,15 @@ your subclass and do whatever else you want.
 use Carp ();
 
 sub _carp {
-    my ($self, $msg) = @_;
-    Carp::carp($msg || $self);
-    return;
+	my ( $self, $msg ) = @_;
+	Carp::carp( $msg || $self );
+	return;
 }
 
 sub _croak {
-    my ($self, $msg) = @_;
-    Carp::croak($msg || $self);
-    return;
+	my ( $self, $msg ) = @_;
+	Carp::croak( $msg || $self );
+	return;
 }
 
 =head1 EFFICIENCY

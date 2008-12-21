@@ -24,6 +24,7 @@ use Carp;
 use version; our $VERSION = qv('0.1');
 
 use Data::Dumper;
+
 # Add the modules to the libpath
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
@@ -31,11 +32,12 @@ use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 use Net::UDAP::MessageIn;
 
 while (<>) {
-    next if /^#/;
-    # convert to binary data
-    my $raw_msg = pack( 'H*', $_ );
-    my $arg_ref = {};
-    $arg_ref->{raw_msg} = $raw_msg;
-    my $msg = Net::UDAP::MessageIn->new( $arg_ref );
-    print Dumper \$msg;
+	next if /^#/;
+
+	# convert to binary data
+	my $raw_msg = pack( 'H*', $_ );
+	my $arg_ref = {};
+	$arg_ref->{raw_msg} = $raw_msg;
+	my $msg = Net::UDAP::MessageIn->new($arg_ref);
+	print Dumper \$msg;
 }

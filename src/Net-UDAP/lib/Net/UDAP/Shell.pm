@@ -32,15 +32,15 @@ use Data::HexDump;
 use File::Spec::Functions;
 
 use base qw(
-    Term::Shell
-    Class::Accessor
+	Term::Shell
+	Class::Accessor
 );
 
 my %fields_default = (
-    num              => 0,
-    log              => undef,
-    name             => 'UDAP',
-    history_filename => catfile( $ENV{HOME}, '.UDAP_history' ),
+	num              => 0,
+	log              => undef,
+	name             => 'UDAP',
+	history_filename => catfile( $ENV{HOME}, '.UDAP_history' ),
 );
 
 __PACKAGE__->follow_best_practice;
@@ -62,56 +62,56 @@ my $current_device = undef; # index of the device from @device_list that is
                             # currently being configured
 
 sub init {
-    my $self = shift;
-    $self->SUPER::init(@_);
+	my $self = shift;
+	$self->SUPER::init(@_);
 
-    my %args = @{ $self->{API}{args} };
-    $self->set_log( $args{log} ) unless defined $self->get_log;
+	my %args = @{ $self->{API}{args} };
+	$self->set_log( $args{log} ) unless defined $self->get_log;
 
-    while ( my ( $key, $value ) = each %fields_default ) {
-        my $set_key = "set_$key";
-        my $get_key = "get_$key";
-        $self->$set_key($value) unless defined $self->$get_key;
-    }
+	while ( my ( $key, $value ) = each %fields_default ) {
+		my $set_key = "set_$key";
+		my $get_key = "get_$key";
+		$self->$set_key($value) unless defined $self->$get_key;
+	}
 
-    # Only now can we try to read the history file, because the
-    # 'history_filename' might have been defined in the DEFAULTS().
+	# Only now can we try to read the history file, because the
+	# 'history_filename' might have been defined in the DEFAULTS().
 
-    if ( $self->{term}->Features->{setHistory} ) {
-        my $filename = $self->get_history_filename;
-        if ( -r $filename ) {
-            open( my $fh, '<', $filename )
-                or die "can't open history file $filename: $!\n";
-            chomp( my @history = <$fh> );
-            $self->{term}->SetHistory(@history);
-            close $fh or die "can't close history file $filename: $!\n";
-        }
-    }
-    $udap = Net::UDAP->new;
+	if ( $self->{term}->Features->{setHistory} ) {
+		my $filename = $self->get_history_filename;
+		if ( -r $filename ) {
+			open( my $fh, '<', $filename )
+				or die "can't open history file $filename: $!\n";
+			chomp( my @history = <$fh> );
+			$self->{term}->SetHistory(@history);
+			close $fh or die "can't close history file $filename: $!\n";
+		}
+	}
+	$udap = Net::UDAP->new;
 }
 
 sub prompt_str {
-    my $device
-        = ( defined $current_device )
-        ? ' ['
-        . ( $current_device + 1 ) . '] ('
-        . $device_list[$current_device]->display_name . ')'
-        : '';
-    return "UDAP$device> "
+	my $device
+		= ( defined $current_device )
+		? ' ['
+		. ( $current_device + 1 ) . '] ('
+		. $device_list[$current_device]->display_name . ')'
+		: '';
+	return "UDAP$device> "
 
 }
 
 sub postloop {
-    my $self = shift;
-    print "\n";
+	my $self = shift;
+	print "\n";
 
-    if ( $self->{term}->Features->{getHistory} ) {
-        my $filename = $self->get_history_filename;
-        open( my $fh, '>', $filename )
-            or die "can't open history file $filename for writing: $!\n";
-        print $fh "$_\n" for grep {length} $self->{term}->GetHistory;
-        close $fh or die "can't close history file $filename: $!\n";
-    }
+	if ( $self->{term}->Features->{getHistory} ) {
+		my $filename = $self->get_history_filename;
+		open( my $fh, '>', $filename )
+			or die "can't open history file $filename for writing: $!\n";
+		print $fh "$_\n" for grep {length} $self->{term}->GetHistory;
+		close $fh or die "can't close history file $filename: $!\n";
+	}
 }
 
 ######## Exit ########
@@ -119,11 +119,11 @@ sub postloop {
 sub alias_exit {qw( exit quit )}
 
 sub smry_exit {
-    'Exit configure mode (if configuring a device), otherwise exit application';
+	'Exit configure mode (if configuring a device), otherwise exit application';
 }
 
 sub help_exit {
-    <<'END' }
+	<<'END' }
 In global mode:
     exit - quits the application
 In configure mode:
@@ -131,33 +131,33 @@ In configure mode:
 END
 
 sub run_exit {
-    my $self = shift;
-    if ( !defined $current_device ) {
-        $self->SUPER::run_exit(@_);
-    }
+	my $self = shift;
+	if ( !defined $current_device ) {
+		$self->SUPER::run_exit(@_);
+	}
 
-    # Need to check if there is any information to save before exiting
-    $current_device = undef;
+	# Need to check if there is any information to save before exiting
+	$current_device = undef;
 }
 
 ######## Discovery ########
 
 sub smry_discover {
-    'Discover UDAP devices and get their current configuration';
+	'Discover UDAP devices and get their current configuration';
 }
 
 sub help_discover {
-    <<'END' }
+	<<'END' }
 Discovers all available UDAP devices and retrieves their current configuration details.
 END
 
 sub run_discover {
-    my $self = shift;
-    $udap->discover( { advanced => 1 } );
-    @device_list = $udap->get_device_list;
-    foreach my $device (@device_list) {
-        $device->load($udap);
-    }
+	my $self = shift;
+	$udap->discover( { advanced => 1 } );
+	@device_list = $udap->get_device_list;
+	foreach my $device (@device_list) {
+		$device->load($udap);
+	}
 }
 
 ######## Params ########
@@ -165,16 +165,16 @@ sub run_discover {
 sub smry_fields {'Display a list of valid device fields'}
 
 sub help_fields {
-    <<'END' }
+	<<'END' }
 Display a list of all valid device fields, with sample values
 END
 
 sub run_fields {
-    my $self = shift;
+	my $self = shift;
 
-    my @sorted_field_names = sort keys %$field_help_from_name;
-    $self->print_pairs( [@sorted_field_names],
-        [ @$field_help_from_name{@sorted_field_names} ] );
+	my @sorted_field_names = sort keys %$field_help_from_name;
+	$self->print_pairs( [@sorted_field_names],
+		[ @$field_help_from_name{@sorted_field_names} ] );
 }
 
 ######## Set ########
@@ -182,34 +182,34 @@ sub run_fields {
 sub smry_set {'Set device parameter(s)'}
 
 sub help_set {
-    <<'END' }
+	<<'END' }
 In configure mode:
     set param=val [param=val ...]
 END
 
 sub run_set {
-    my ( $self, @args ) = @_;
-    my $nargs = scalar(@args);
-    if ( !defined $current_device ) {
-        print "set command not valid here\n";
-        return;
-    }
+	my ( $self, @args ) = @_;
+	my $nargs = scalar(@args);
+	if ( !defined $current_device ) {
+		print "set command not valid here\n";
+		return;
+	}
 
-    foreach my $arg (@args) {
-        my ( $param, $value ) = split /=/, $arg;
-        if ( ( !defined $param ) or ( !defined $value ) ) {
-            print "Syntax error in set command\n";
-            return;
-        }
-        if ( exists $field_default_from_name->{$param} ) {
-            my $set_sub = "set_$param";
-            $device_list[$current_device]->$set_sub($value);
-        }
-        else {
-            print "Invalid parameter: $param\n";
-            return;
-        }
-    }
+	foreach my $arg (@args) {
+		my ( $param, $value ) = split /=/, $arg;
+		if ( ( !defined $param ) or ( !defined $value ) ) {
+			print "Syntax error in set command\n";
+			return;
+		}
+		if ( exists $field_default_from_name->{$param} ) {
+			my $set_sub = "set_$param";
+			$device_list[$current_device]->$set_sub($value);
+		}
+		else {
+			print "Invalid parameter: $param\n";
+			return;
+		}
+	}
 }
 
 ######## save_data ########
@@ -217,50 +217,50 @@ sub run_set {
 sub smry_save_data {'Save data parameters to device(s)'}
 
 sub help_save_data {
-    <<'END' }
+	<<'END' }
 In global mode:
     save [all] - save data parameters to all devices
     save [n]   - save data parameters to device n
 END
 
 sub run_save_data {
-    my ( $self, @args ) = @_;
-    my $nargs = scalar(@args);
-    if ( defined $current_device ) {
+	my ( $self, @args ) = @_;
+	my $nargs = scalar(@args);
+	if ( defined $current_device ) {
 
-        # configure mode
-        if ( $nargs == 0 ) {
-            $device_list[$current_device]->save_data($udap);
-        }
-        else {
-            print "Syntax error in save_data command\n";
-        }
+		# configure mode
+		if ( $nargs == 0 ) {
+			$device_list[$current_device]->save_data($udap);
+		}
+		else {
+			print "Syntax error in save_data command\n";
+		}
 
-    }
-    else {
-    SWITCH: {
-            ( $nargs == 0 )
-                or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) ) and do {
+	}
+	else {
+	SWITCH: {
+			( $nargs == 0 )
+				or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) ) and do {
 
-                last SWITCH;
-                };
-            (           ( $nargs == 1 )
-                    and ( looks_like_number( $args[0] ) )
-                    and (
-                    ref( $device_list[ $args[0] - 1 ] ) eq
-                    'Net::UDAP::Client' )
-                )
-                and do {
-                foreach my $device (@device_list) {
-                    $device->save_data($udap);
-                }
-                last SWITCH;
-                };
-            print "Syntax error in save_data command\n";
-        }
+				last SWITCH;
+				};
+			(           ( $nargs == 1 )
+					and ( looks_like_number( $args[0] ) )
+					and (
+					ref( $device_list[ $args[0] - 1 ] ) eq
+					'Net::UDAP::Client' )
+				)
+				and do {
+				foreach my $device (@device_list) {
+					$device->save_data($udap);
+				}
+				last SWITCH;
+				};
+			print "Syntax error in save_data command\n";
+		}
 
-        # global mode
-    }
+		# global mode
+	}
 }
 
 ######## save_ip ########
@@ -268,50 +268,50 @@ sub run_save_data {
 sub smry_save_ip {'Save ip parameters to device(s)'}
 
 sub help_save_ip {
-    <<'END' }
+	<<'END' }
 In global mode:
     save [all] - save ip parameters to all devices
     save [n]   - save ip parameters to device n
 END
 
 sub run_save_ip {
-    my ( $self, @args ) = @_;
-    my $nargs = scalar(@args);
-    if ( defined $current_device ) {
+	my ( $self, @args ) = @_;
+	my $nargs = scalar(@args);
+	if ( defined $current_device ) {
 
-        # configure mode
-        if ( $nargs == 0 ) {
-            $device_list[$current_device]->save_ip($udap);
-        }
-        else {
-            print "Syntax error in save_ip command\n";
-        }
+		# configure mode
+		if ( $nargs == 0 ) {
+			$device_list[$current_device]->save_ip($udap);
+		}
+		else {
+			print "Syntax error in save_ip command\n";
+		}
 
-    }
-    else {
-    SWITCH: {
-            ( $nargs == 0 )
-                or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) ) and do {
+	}
+	else {
+	SWITCH: {
+			( $nargs == 0 )
+				or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) ) and do {
 
-                last SWITCH;
-                };
-            (           ( $nargs == 1 )
-                    and ( looks_like_number( $args[0] ) )
-                    and (
-                    ref( $device_list[ $args[0] - 1 ] ) eq
-                    'Net::UDAP::Client' )
-                )
-                and do {
-                foreach my $device (@device_list) {
-                    $device->save_ip($udap);
-                }
-                last SWITCH;
-                };
-            print "Syntax error in save_ip command\n";
-        }
+				last SWITCH;
+				};
+			(           ( $nargs == 1 )
+					and ( looks_like_number( $args[0] ) )
+					and (
+					ref( $device_list[ $args[0] - 1 ] ) eq
+					'Net::UDAP::Client' )
+				)
+				and do {
+				foreach my $device (@device_list) {
+					$device->save_ip($udap);
+				}
+				last SWITCH;
+				};
+			print "Syntax error in save_ip command\n";
+		}
 
-        # global mode
-    }
+		# global mode
+	}
 }
 
 ######## reset ########
@@ -319,71 +319,71 @@ sub run_save_ip {
 sub smry_reset {'Reset a device'}
 
 sub help_reset {
-    <<'END' }
+	<<'END' }
 Reset a device
 END
 
 sub run_reset {
-    my ( $self, @args ) = @_;
-    my $nargs = scalar(@args);
-    if ( defined $current_device ) {
+	my ( $self, @args ) = @_;
+	my $nargs = scalar(@args);
+	if ( defined $current_device ) {
 
-        # configure mode
-    SWITCH: {
+		# configure mode
+	SWITCH: {
 
-            # 'list' or 'list all'
-            ( $nargs == 0 ) and do {
-                $device_list[$current_device]->reset($udap);
-                last SWITCH;
-            };
-            print "reset command not valid\n";
-        }
-    }
-    else {
+			# 'list' or 'list all'
+			( $nargs == 0 ) and do {
+				$device_list[$current_device]->reset($udap);
+				last SWITCH;
+			};
+			print "reset command not valid\n";
+		}
+	}
+	else {
 
-        # global mode
-    SWITCH: {
-            (          ( $nargs == 0 )
-                    or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) )
-                )
-                and do {
+		# global mode
+	SWITCH: {
+			(          ( $nargs == 0 )
+					or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) )
+				)
+				and do {
 
-                # reset all devices
-                foreach my $device (@device_list) {
-                    $device->reset($udap);
-                }
-                last SWITCH;
-                };
-            (           ( $nargs == 1 )
-                    and ( looks_like_number( $args[0] ) )
-                    and (
-                    ref( $device_list[ $args[0] - 1 ] ) eq
-                    'Net::UDAP::Client' )
-                )
-                and do {
+				# reset all devices
+				foreach my $device (@device_list) {
+					$device->reset($udap);
+				}
+				last SWITCH;
+				};
+			(           ( $nargs == 1 )
+					and ( looks_like_number( $args[0] ) )
+					and (
+					ref( $device_list[ $args[0] - 1 ] ) eq
+					'Net::UDAP::Client' )
+				)
+				and do {
 
-                # list all details of one device
-                # NB. The user will use device 1, 2, 3, etc. while the array
-                #     index starts at 0; hence the need to subtract one from
-                #     the number supplied by the user
-                $self->list_device( $device_list[ $args[0] - 1 ] );
-                last SWITCH;
-                };
+				# list all details of one device
+				# NB. The user will use device 1, 2, 3, etc. while the array
+				#     index starts at 0; hence the need to subtract one from
+				#     the number supplied by the user
+				$self->list_device( $device_list[ $args[0] - 1 ] );
+				last SWITCH;
+				};
 
-            # default SWITCH action here
-            print "Syntax error in list command\n";
-        }
-    }
+			# default SWITCH action here
+			print "Syntax error in list command\n";
+		}
+	}
 }
 
 ######## List ########
 
 sub smry_list {
-    'List discovered devices, or a specific information about a device';
+	'List discovered devices, or a specific information about a device';
 }
 
 sub help_list {
-    <<'END' }
+	<<'END' }
 In global mode:
     list [all] - lists all discovered devices
     list n     - lists information about device n
@@ -394,58 +394,58 @@ In configure mode:
 END
 
 sub run_list {
-    my ( $self, @args ) = @_;
-    my $nargs = scalar(@args);
-    if ( defined $current_device ) {
+	my ( $self, @args ) = @_;
+	my $nargs = scalar(@args);
+	if ( defined $current_device ) {
 
-        # configure mode
-    SWITCH: {
+		# configure mode
+	SWITCH: {
 
-            # 'list' or 'list all'
-            ( $nargs == 0 )
-                or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) ) and do {
-                $self->list_device( $device_list[$current_device] );
-                last SWITCH;
-                };
+			# 'list' or 'list all'
+			( $nargs == 0 )
+				or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) ) and do {
+				$self->list_device( $device_list[$current_device] );
+				last SWITCH;
+				};
 
-            # send all supplied params to list_device sub
-            $self->list_device( $device_list[$current_device],
-                ($nargs) ? [@args] : undef );
-        }
-    }
-    else {
+			# send all supplied params to list_device sub
+			$self->list_device( $device_list[$current_device],
+				($nargs) ? [@args] : undef );
+		}
+	}
+	else {
 
-        # global mode
-    SWITCH: {
-            (          ( $nargs == 0 )
-                    or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) )
-                )
-                and do {
+		# global mode
+	SWITCH: {
+			(          ( $nargs == 0 )
+					or ( ( $nargs == 1 ) and ( $args[0] eq 'all' ) )
+				)
+				and do {
 
-                # list all devices
-                $self->show_devices;
-                last SWITCH;
-                };
-            (           ( $nargs == 1 )
-                    and ( looks_like_number( $args[0] ) )
-                    and (
-                    ref( $device_list[ $args[0] - 1 ] ) eq
-                    'Net::UDAP::Client' )
-                )
-                and do {
+				# list all devices
+				$self->show_devices;
+				last SWITCH;
+				};
+			(           ( $nargs == 1 )
+					and ( looks_like_number( $args[0] ) )
+					and (
+					ref( $device_list[ $args[0] - 1 ] ) eq
+					'Net::UDAP::Client' )
+				)
+				and do {
 
-                # list all details of one device
-                # NB. The user will use device 1, 2, 3, etc. while the array
-                #     index starts at 0; hence the need to subtract one from
-                #     the number supplied by the user
-                $self->list_device( $device_list[ $args[0] - 1 ] );
-                last SWITCH;
-                };
+				# list all details of one device
+				# NB. The user will use device 1, 2, 3, etc. while the array
+				#     index starts at 0; hence the need to subtract one from
+				#     the number supplied by the user
+				$self->list_device( $device_list[ $args[0] - 1 ] );
+				last SWITCH;
+				};
 
-            # default SWITCH action here
-            print "Syntax error in list command\n";
-        }
-    }
+			# default SWITCH action here
+			print "Syntax error in list command\n";
+		}
+	}
 }
 
 ######## configure ########
@@ -453,88 +453,88 @@ sub run_list {
 sub smry_configure {'configure a device'}
 
 sub help_configure {
-    <<'END' }
+	<<'END' }
     configure help goes here
 END
 
 sub run_configure {
-    my ( $self, @args ) = @_;
+	my ( $self, @args ) = @_;
 
-    #    if ( !defined $discovered_devices ) {
-    #        print "Discovery not yet run\n";
-    #        return;
-    #    }
-    if ( scalar(@device_list) == 0 ) {
-        print "No devices found to configure\n";
-        return;
-    }
-    if (    ( scalar(@args) == 1 )
-        and ( looks_like_number( $args[0] ) )
-        and ( ref( $device_list[ $args[0] - 1 ] ) eq 'Net::UDAP::Client' ) )
-    {
-        $current_device = $args[0] - 1;
-        return;
-    }
+	#    if ( !defined $discovered_devices ) {
+	#        print "Discovery not yet run\n";
+	#        return;
+	#    }
+	if ( scalar(@device_list) == 0 ) {
+		print "No devices found to configure\n";
+		return;
+	}
+	if (    ( scalar(@args) == 1 )
+		and ( looks_like_number( $args[0] ) )
+		and ( ref( $device_list[ $args[0] - 1 ] ) eq 'Net::UDAP::Client' ) )
+	{
+		$current_device = $args[0] - 1;
+		return;
+	}
 }
 
 ######## non-command routines ########
 
 sub show_devices {
-    my $list_format = "%2s %-17s %-10s %-15s\n";
-    my $count       = 1;
-    printf $list_format, '#', '   MAC Address   ', 'Type', 'Status';
-    printf $list_format, '=' x 2, '=' x 17, '=' x 10, '=' x 15;
-    foreach my $device (@device_list) {
-        if ( ref($device) eq 'Net::UDAP::Client' ) {
-            printf $list_format, $count, $device->get_mac,
-                $device->get_device_type, $device->get_device_status;
-            $count++;
-        }
-    }
+	my $list_format = "%2s %-17s %-10s %-15s\n";
+	my $count       = 1;
+	printf $list_format, '#', '   MAC Address   ', 'Type', 'Status';
+	printf $list_format, '=' x 2, '=' x 17, '=' x 10, '=' x 15;
+	foreach my $device (@device_list) {
+		if ( ref($device) eq 'Net::UDAP::Client' ) {
+			printf $list_format, $count, $device->get_mac,
+				$device->get_device_type, $device->get_device_status;
+			$count++;
+		}
+	}
 }
 
 sub list_device {
-    my ( $self, $device, $param_names ) = @_;
+	my ( $self, $device, $param_names ) = @_;
 
-    # If the user supplied any parameters, validate them and use them
-    if ( defined $param_names ) {
+	# If the user supplied any parameters, validate them and use them
+	if ( defined $param_names ) {
 
-        # Ceck for invalid field names
-        my @invalid_field_names;
-        foreach my $fieldname ( @{$param_names} ) {
-            push( @invalid_field_names, $fieldname )
-                unless exists $field_default_from_name->{$fieldname};
-        }
-        if ( scalar(@invalid_field_names) ) {
-            print "Invalid field names in list: ["
-                . join( ',', @invalid_field_names ) . "]\n";
-            return;
-        }
-    }
-    else {
+		# Ceck for invalid field names
+		my @invalid_field_names;
+		foreach my $fieldname ( @{$param_names} ) {
+			push( @invalid_field_names, $fieldname )
+				unless exists $field_default_from_name->{$fieldname};
+		}
+		if ( scalar(@invalid_field_names) ) {
+			print "Invalid field names in list: ["
+				. join( ',', @invalid_field_names ) . "]\n";
+			return;
+		}
+	}
+	else {
 
-        # Otherwise, use all param names
-        $param_names = [ keys %$field_default_from_name ];
-    }
+		# Otherwise, use all param names
+		$param_names = [ keys %$field_default_from_name ];
+	}
 
-    # Get a hash just those params that are not 'undef'
-    my $defined_fields = $device->get_defined_fields;
+	# Get a hash just those params that are not 'undef'
+	my $defined_fields = $device->get_defined_fields;
 
-    # Select only those params that are both defined and requested
-    # also, use a hash slice to get the keys in sorted order
-    my @keys_to_print;
-    foreach my $fieldname ( @{$param_names} ) {
-        push( @keys_to_print, $fieldname )
-            if exists $defined_fields->{$fieldname};
-    }
+	# Select only those params that are both defined and requested
+	# also, use a hash slice to get the keys in sorted order
+	my @keys_to_print;
+	foreach my $fieldname ( @{$param_names} ) {
+		push( @keys_to_print, $fieldname )
+			if exists $defined_fields->{$fieldname};
+	}
 
-    @keys_to_print = sort @keys_to_print;
-    $self->print_pairs( [@keys_to_print],
-        [ @{$defined_fields}{@keys_to_print} ] );
+	@keys_to_print = sort @keys_to_print;
+	$self->print_pairs( [@keys_to_print],
+		[ @{$defined_fields}{@keys_to_print} ] );
 
-    #   foreach my $param (@keys_to_print) {
-    #       print "HexDump of $param:\n" . HexDump($defined_params->{$param})
-    #   }
+	#   foreach my $param (@keys_to_print) {
+	#       print "HexDump of $param:\n" . HexDump($defined_params->{$param})
+	#   }
 }
 1;    # Magic true value required at end of module
 __END__

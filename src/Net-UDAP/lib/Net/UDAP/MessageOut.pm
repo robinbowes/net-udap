@@ -38,22 +38,22 @@ use Net::UDAP::Util;
 
 my %fields_default = (
 
-    # define fields and default values here
-    dst_broadcast => BROADCAST_OFF,
-    dst_type      => DST_TYPE_ETH,
-    dst_mac       => undef,
-    src_broadcast => BROADCAST_OFF,
-    src_type      => ADDR_TYPE_UDP,
-    src_ip        => IP_ZERO,
-    src_port      => PORT_ZERO,
-    seq           => pack( 'n', 0x0001 ),        # unused
-    udap_type     => UDAP_TYPE_UCP,
-    ucp_flags     => pack( 'C', 0x01 ),          # unused?
-    ucp_class     => UAP_CLASS_UCP,
-    ucp_method    => undef,
-    credentials   => pack( 'C32', 0x00 x 32 ),
-    data_to_get => undef,  # store data to get as an anon array of param names
-    data_to_set => undef,  # store data to set as an anon hash
+	# define fields and default values here
+	dst_broadcast => BROADCAST_OFF,
+	dst_type      => DST_TYPE_ETH,
+	dst_mac       => undef,
+	src_broadcast => BROADCAST_OFF,
+	src_type      => ADDR_TYPE_UDP,
+	src_ip        => IP_ZERO,
+	src_port      => PORT_ZERO,
+	seq           => pack( 'n', 0x0001 ),        # unused
+	udap_type     => UDAP_TYPE_UCP,
+	ucp_flags     => pack( 'C', 0x01 ),          # unused?
+	ucp_class     => UAP_CLASS_UCP,
+	ucp_method    => undef,
+	credentials   => pack( 'C32', 0x00 x 32 ),
+	data_to_get => undef,  # store data to get as an anon array of param names
+	data_to_set => undef,  # store data to set as an anon hash
 );
 
 __PACKAGE__->follow_best_practice;
@@ -61,213 +61,213 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
 {
 
-    sub new {
-        my ( $caller, $arg_ref ) = @_;
-        my $class = ref $caller || $caller;
+	sub new {
+		my ( $caller, $arg_ref ) = @_;
+		my $class = ref $caller || $caller;
 
-        # make sure $arg_ref is a hash ref
-        $arg_ref = {} unless ref($arg_ref) eq 'HASH';
+		# make sure $arg_ref is a hash ref
+		$arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
-        # make sure $arg_ref->{data_to_get} is an array ref
-        $arg_ref->{data_to_get} = []
-            unless ref( $arg_ref->{data_to_get} ) eq 'ARRAY';
+		# make sure $arg_ref->{data_to_get} is an array ref
+		$arg_ref->{data_to_get} = []
+			unless ref( $arg_ref->{data_to_get} ) eq 'ARRAY';
 
-        # make sure $arg_ref->{data_to_set} is a hash_ref
-        $arg_ref->{data_to_set} = {}
-            unless ref( $arg_ref->{data_to_set} ) eq 'HASH';
+		# make sure $arg_ref->{data_to_set} is a hash_ref
+		$arg_ref->{data_to_set} = {}
+			unless ref( $arg_ref->{data_to_set} ) eq 'HASH';
 
-        # values from $arg_ref over-write the defaults
-        my %arg = ( %fields_default, %{$arg_ref} );
+		# values from $arg_ref over-write the defaults
+		my %arg = ( %fields_default, %{$arg_ref} );
 
-        # A method must be specified, i.e. what type of packet is this?
-        my $method = $arg{ucp_method};
-        (          ( defined($method) )
-                && ( exists $ucp_method_name->{$method} )
-                && ( $ucp_method_name->{$method} ) )
-            or do {
-            croak('ucp_method invalid or not defined.');
-            };
+		# A method must be specified, i.e. what type of packet is this?
+		my $method = $arg{ucp_method};
+		(          ( defined($method) )
+				&& ( exists $ucp_method_name->{$method} )
+				&& ( $ucp_method_name->{$method} ) )
+			or do {
+			croak('ucp_method invalid or not defined.');
+			};
 
-        # Set values and perform checks specific to each packet type
-    SWITCH: {
-            (          ( $method eq UCP_METHOD_DISCOVER )
-                    or ( $method eq UCP_METHOD_ADV_DISCOVER )
-                )
-                && do {
+		# Set values and perform checks specific to each packet type
+	SWITCH: {
+			(          ( $method eq UCP_METHOD_DISCOVER )
+					or ( $method eq UCP_METHOD_ADV_DISCOVER )
+				)
+				&& do {
 
-                # Set values specific to discovery packets
-                $arg{dst_broadcast} = BROADCAST_ON;
-                $arg{dst_mac}       = MAC_ZERO;
-                $arg{src_ip}        = detect_local_ip;
-                last SWITCH;
-                };
+				# Set values specific to discovery packets
+				$arg{dst_broadcast} = BROADCAST_ON;
+				$arg{dst_mac}       = MAC_ZERO;
+				$arg{src_ip}        = detect_local_ip;
+				last SWITCH;
+				};
 
-            # Mac address must be specified for all remaining method types
-            if ( !defined $arg{dst_mac} ) {
-                croak(    'Must specify dst_mac MAC address for '
-                        . $ucp_method_name->{$method}
-                        . ' msgs.' );
-            }
+			# Mac address must be specified for all remaining method types
+			if ( !defined $arg{dst_mac} ) {
+				croak(    'Must specify dst_mac MAC address for '
+						. $ucp_method_name->{$method}
+						. ' msgs.' );
+			}
 
-            ( $method eq UCP_METHOD_GET_IP ) && do {
+			( $method eq UCP_METHOD_GET_IP ) && do {
 
-                # nothing further to do for get_ip
-                last SWITCH;
-            };
+				# nothing further to do for get_ip
+				last SWITCH;
+			};
 
-            ( $method eq UCP_METHOD_SET_IP ) && do {
+			( $method eq UCP_METHOD_SET_IP ) && do {
 
-                # The following data is required:
-                #   UCP_CODE_SET_IP (0x03)
-                #   IP address
-                #   Netmask
-                #   Gateway
-                #   DHCP_ON / DHCP_OFF
-                # Ought to validate the supplied data here
-                # Otherwise, nothing further to do.
-                last SWITCH;
-            };
+				# The following data is required:
+				#   UCP_CODE_SET_IP (0x03)
+				#   IP address
+				#   Netmask
+				#   Gateway
+				#   DHCP_ON / DHCP_OFF
+				# Ought to validate the supplied data here
+				# Otherwise, nothing further to do.
+				last SWITCH;
+			};
 
-            ( $method eq UCP_METHOD_RESET ) && do {
+			( $method eq UCP_METHOD_RESET ) && do {
 
-                # Nothing more to do for reset method
+				# Nothing more to do for reset method
 
-                last SWITCH;
-            };
+				last SWITCH;
+			};
 
-            ( $method eq UCP_METHOD_GET_DATA ) && do {
+			( $method eq UCP_METHOD_GET_DATA ) && do {
 
-                # Ought to validate the requested data here
-                # Otherwise, nothing further to do
-                last SWITCH;
-            };
+				# Ought to validate the requested data here
+				# Otherwise, nothing further to do
+				last SWITCH;
+			};
 
-            ( $method eq UCP_METHOD_SET_DATA ) && do {
+			( $method eq UCP_METHOD_SET_DATA ) && do {
 
-                # Should I validate any data here?
-                last SWITCH;
-            };
+				# Should I validate any data here?
+				last SWITCH;
+			};
 
-            # default action if ucp_method value recognised
-            croak( 'Invalid ucp_method: ' . bytes_to_hex( $method, 4 ) );
-        }
+			# default action if ucp_method value recognised
+			croak( 'Invalid ucp_method: ' . bytes_to_hex( $method, 4 ) );
+		}
 
-        my $self = bless {%arg}, $class;
-        return $self;
-    }
+		my $self = bless {%arg}, $class;
+		return $self;
+	}
 
-    sub packed {
-        my $self = shift;
+	sub packed {
+		my $self = shift;
 
-        # The first part of the msg is same for all msg types
-        my $str .= $self->get_dst_broadcast;
-        $str    .= $self->get_dst_type;
-        $str    .= $self->get_dst_mac;         # mac stored packed
-        $str    .= $self->get_src_broadcast;
-        $str    .= $self->get_src_type;
-        $str    .= $self->get_src_ip;
-        $str    .= $self->get_src_port;
-        $str    .= $self->get_seq;
-        $str    .= $self->get_udap_type;
-        $str    .= $self->get_ucp_flags;
-        $str    .= $self->get_ucp_class;
+		# The first part of the msg is same for all msg types
+		my $str .= $self->get_dst_broadcast;
+		$str    .= $self->get_dst_type;
+		$str    .= $self->get_dst_mac;         # mac stored packed
+		$str    .= $self->get_src_broadcast;
+		$str    .= $self->get_src_type;
+		$str    .= $self->get_src_ip;
+		$str    .= $self->get_src_port;
+		$str    .= $self->get_seq;
+		$str    .= $self->get_udap_type;
+		$str    .= $self->get_ucp_flags;
+		$str    .= $self->get_ucp_class;
 
-        my $method = $self->get_ucp_method;
-        $str .= $method;
+		my $method = $self->get_ucp_method;
+		$str .= $method;
 
-    SWITCH: {
-            (          ( $method eq UCP_METHOD_DISCOVER )
-                    or ( $method eq UCP_METHOD_ADV_DISCOVER )
-                    or ( $method eq UCP_METHOD_GET_IP )
-                    or ( $method eq UCP_METHOD_RESET )
-                )
-                && do {
-                last SWITCH;
-                };
-            ( $method eq UCP_METHOD_SET_IP ) && do {
+	SWITCH: {
+			(          ( $method eq UCP_METHOD_DISCOVER )
+					or ( $method eq UCP_METHOD_ADV_DISCOVER )
+					or ( $method eq UCP_METHOD_GET_IP )
+					or ( $method eq UCP_METHOD_RESET )
+				)
+				&& do {
+				last SWITCH;
+				};
+			( $method eq UCP_METHOD_SET_IP ) && do {
 
-                # IP Address, Netmask, Gateway
-                my $dts = $self->get_data_to_set->{ip};
-                $str .= exists $dts->{ip} ? inet_aton( $dts->{ip} ) : IP_ZERO;
-                $str .=
-                    exists $dts->{netmask}
-                    ? inet_aton( $dts->{netmask} )
-                    : IP_ZERO;
-                $str .=
-                    exists $dts->{gateway}
-                    ? inet_aton( $dts->{gateway} )
-                    : IP_ZERO;
-                $str .= exists $dts->{ip} ? DHCP_OFF : DHCP_ON;
-                last SWITCH;
-            };
-            ( $method eq UCP_METHOD_GET_DATA ) && do {
+				# IP Address, Netmask, Gateway
+				my $dts = $self->get_data_to_set->{ip};
+				$str .= exists $dts->{ip} ? inet_aton( $dts->{ip} ) : IP_ZERO;
+				$str .=
+					exists $dts->{netmask}
+					? inet_aton( $dts->{netmask} )
+					: IP_ZERO;
+				$str .=
+					exists $dts->{gateway}
+					? inet_aton( $dts->{gateway} )
+					: IP_ZERO;
+				$str .= exists $dts->{ip} ? DHCP_OFF : DHCP_ON;
+				last SWITCH;
+			};
+			( $method eq UCP_METHOD_GET_DATA ) && do {
 
-                $str .= $self->get_credentials;
-                $str .= pack( 'n', scalar @{ $self->get_data_to_get } )
-                    ;    # no. of data items
-                foreach my $param_name ( @{ $self->get_data_to_get } ) {
-                    if ( exists $field_offset_from_name->{$param_name} ) {
-                        $str .= pack( 'n',
-                            $field_offset_from_name->{$param_name} );
-                        $str .= pack( 'n',
-                            $field_size_from_name->{$param_name} );
-                    }
-                    else {
-                        log( warn =>
-                                "    Client param name [$param_name] not valid\n"
-                        );
-                    }
-                }
-                last SWITCH;
-            };
-            ( $method eq UCP_METHOD_SET_DATA ) && do {
+				$str .= $self->get_credentials;
+				$str .= pack( 'n', scalar @{ $self->get_data_to_get } )
+					;    # no. of data items
+				foreach my $param_name ( @{ $self->get_data_to_get } ) {
+					if ( exists $field_offset_from_name->{$param_name} ) {
+						$str .= pack( 'n',
+							$field_offset_from_name->{$param_name} );
+						$str .= pack( 'n',
+							$field_size_from_name->{$param_name} );
+					}
+					else {
+						log( warn =>
+								"    Client param name [$param_name] not valid\n"
+						);
+					}
+				}
+				last SWITCH;
+			};
+			( $method eq UCP_METHOD_SET_DATA ) && do {
 
-                # set_data method is in the following format:
-                #  - credentials
-                #  - number of items
-                #  - repeating group of:
-                #    ( offset, data_length, data )
-                $str .= $self->get_credentials;
+				# set_data method is in the following format:
+				#  - credentials
+				#  - number of items
+				#  - repeating group of:
+				#    ( offset, data_length, data )
+				$str .= $self->get_credentials;
 
-             # no. of items is count of number of keys in get_data_to_set hash
-                my $data = $self->get_data_to_set;
-                $str .= pack( 'n', scalar( keys %{$data} ) );
-                foreach my $pname ( keys %{$data} ) {
-                    $str .= pack( 'n', $field_offset_from_name->{$pname} );
-                    my $packed_data = $field_pack_from_name->{$pname}
-                        ->( $data->{$pname} );
-                    $str .= pack( 'n', length($packed_data) );
-                    $str .= $packed_data;
-                }
-                last SWITCH;
-            };
-            ( $method eq UCP_METHOD_SET_IP ) && do {
+			 # no. of items is count of number of keys in get_data_to_set hash
+				my $data = $self->get_data_to_set;
+				$str .= pack( 'n', scalar( keys %{$data} ) );
+				foreach my $pname ( keys %{$data} ) {
+					$str .= pack( 'n', $field_offset_from_name->{$pname} );
+					my $packed_data = $field_pack_from_name->{$pname}
+						->( $data->{$pname} );
+					$str .= pack( 'n', length($packed_data) );
+					$str .= $packed_data;
+				}
+				last SWITCH;
+			};
+			( $method eq UCP_METHOD_SET_IP ) && do {
 
-                # set_ip data is in the following format:
-                #  - ip address
-                #  - subnet mask
-                #  - gateway
-                #  - ip mode (DHCP or static)
-                my $data = $self->get_data_to_set;
-                foreach my $fieldname (
-                    qw(lan_network_address lan_subnet_mask lan_gateway lan_ip_mode)
-                    )
-                {
-                    $str .= $field_pack_from_name->$data->{$fieldname}
-                        ->( $self->get_data_to_set->{$fieldname} );
-                }
-                last SWITCH;
-            };
+				# set_ip data is in the following format:
+				#  - ip address
+				#  - subnet mask
+				#  - gateway
+				#  - ip mode (DHCP or static)
+				my $data = $self->get_data_to_set;
+				foreach my $fieldname (
+					qw(lan_network_address lan_subnet_mask lan_gateway lan_ip_mode)
+					)
+				{
+					$str .= $field_pack_from_name->$data->{$fieldname}
+						->( $self->get_data_to_set->{$fieldname} );
+				}
+				last SWITCH;
+			};
 
-            log(      error => '  msg method '
-                    . $ucp_method_name->{$method}
-                    . " not implemented\n" );
-            return undef;
-        }
+			log(      error => '  msg method '
+					. $ucp_method_name->{$method}
+					. " not implemented\n" );
+			return undef;
+		}
 
-        # print "packed msg in MessageOut.packed:\n" . HexDump( $str);
-        return $str;
-    }
+		# print "packed msg in MessageOut.packed:\n" . HexDump( $str);
+		return $str;
+	}
 }
 
 1;    # Magic true value required at end of module

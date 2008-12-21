@@ -9,102 +9,101 @@ use Carp;
 use base 'IO::File';
 
 my @levels = qw( all trace debug user info warn error fatal none );
-my %severity; @severity{@levels} = 1..@levels;
+my %severity;
+@severity{@levels} = 1 .. @levels;
 
 # Aliases...
 $severity{warning} = $severity{warn};
 
-
 sub _make_formatter {
-    my ($format) = @_;
-    return sub {
-        my ($time, $source, $type, @msg) = @_;
-        my $msg = join q{}, @msg;
-        return sprintf $format, $time, $source, $type, $msg;
-    }
+	my ($format) = @_;
+	return sub {
+		my ( $time, $source, $type, @msg ) = @_;
+		my $msg = join q{}, @msg;
+		return sprintf $format, $time, $source, $type, $msg;
+		}
 }
 
 sub import {
-    my ($package, $opt_ref) = @_;
-    my ($caller, $file) = caller;
+	my ( $package, $opt_ref ) = @_;
+	my ( $caller,  $file )    = caller;
 
+	croak
+		"Usage: use $package { file=>\$filename, level=>\$level, format=>sub{...} }\n "
+		if $opt_ref && not ref $opt_ref eq 'HASH';
 
-    croak "Usage: use $package { file=>\$filename, level=>\$level, format=>sub{...} }\n "
-        if $opt_ref && not ref $opt_ref eq 'HASH';
+	if ( not exists $opt_ref->{file} ) {
+		$opt_ref->{file} = "$file.log";
+	}
 
-    if (not exists $opt_ref->{file}) {
-        $opt_ref->{file} = "$file.log";
-    }
+	if ( not exists $opt_ref->{format} ) {
+		$opt_ref->{format} = _make_formatter("[%s] [%s] [%s] %s");
+	}
+	elsif ( not ref $opt_ref->{format} ) {
+		$opt_ref->{format} = _make_formatter( $opt_ref->{format} );
+	}
 
-    if (not exists $opt_ref->{format}) {
-        $opt_ref->{format} = _make_formatter("[%s] [%s] [%s] %s");
-    }
-    elsif (not ref $opt_ref->{format}) {
-        $opt_ref->{format} = _make_formatter($opt_ref->{format});
-    }
-        
-    if (not exists $opt_ref->{level}) {
-        $opt_ref->{level} = 'user';
-    }
+	if ( not exists $opt_ref->{level} ) {
+		$opt_ref->{level} = 'user';
+	}
 
-    no strict 'refs';
-    tie *{$caller.'::STDLOG'}, $package, $opt_ref;
+	no strict 'refs';
+	tie *{ $caller . '::STDLOG' }, $package, $opt_ref;
 }
 
 sub TIEHANDLE {
-    my ($package, $opt_ref) = @_;
+	my ( $package, $opt_ref ) = @_;
 
-    return bless {         file => $opt_ref->{file},
-                         handle => $opt_ref->{handle},
-                      formatter => $opt_ref->{format},
-              min_severity_name => $opt_ref->{level} || 'user',   
-                   min_severity => $severity{$opt_ref->{level}}
-                                   || $severity{user},   
-                 };
+	return bless {
+		file              => $opt_ref->{file},
+		handle            => $opt_ref->{handle},
+		formatter         => $opt_ref->{format},
+		min_severity_name => $opt_ref->{level} || 'user',
+		min_severity => $severity{ $opt_ref->{level} } || $severity{user},
+	};
 }
 
 use Fcntl ':flock';
 
 sub PRINT {
-    my ($self, $level, @msg)
-        = @_ == 1 ? ( $_[0], $_[0]->{min_severity_name}, $_    )
-        : @_ == 2 ? ( $_[0], $_[0]->{min_severity_name}, $_[1] )
-        :           ( @_                                  )
-        ;
+	my ( $self, $level, @msg )
+		= @_ == 1 ? ( $_[0], $_[0]->{min_severity_name}, $_ )
+		: @_ == 2 ? ( $_[0], $_[0]->{min_severity_name}, $_[1] )
+		:           (@_);
 
-    # No-op if message isn't important enough...
-    my $severity = $severity{$level} || $severity{user};
-    return 0 if $self->{min_severity} > $severity;
+	# No-op if message isn't important enough...
+	my $severity = $severity{$level} || $severity{user};
+	return 0 if $self->{min_severity} > $severity;
 
-    # Format message early to get accurate time-stamp...
-    my ($sec,$min,$hour,$day,$mon,$year) = localtime;
-    $year+=1900;
-    $mon++;
-    my $time = sprintf("%04d%02d%02d.%02d%02d%02d",
-                       $year, $mon, $day, $hour, $min, $sec);
-    $msg[-1] =~ s/\n\z// if @msg;
-    my $log_msg = $self->{formatter}->($time, $$, $level, @msg);
+	# Format message early to get accurate time-stamp...
+	my ( $sec, $min, $hour, $day, $mon, $year ) = localtime;
+	$year += 1900;
+	$mon++;
+	my $time = sprintf( "%04d%02d%02d.%02d%02d%02d",
+		$year, $mon, $day, $hour, $min, $sec );
+	$msg[-1] =~ s/\n\z// if @msg;
+	my $log_msg = $self->{formatter}->( $time, $$, $level, @msg );
 
-    # Create connection to log file, if necessary...
-    if (not $self->{handle}) {
-        open $self->{handle}, '>>', $self->{file}
-            or croak "Unable to open log file '$self->{file}'";
-    }
+	# Create connection to log file, if necessary...
+	if ( not $self->{handle} ) {
+		open $self->{handle}, '>>', $self->{file}
+			or croak "Unable to open log file '$self->{file}'";
+	}
 
-    # Synchronize writing to file via advisory locking...
-    flock($self->{handle}, LOCK_EX);
-    my $result = $self->{handle}->print($log_msg."\n");
-    flock($self->{handle}, LOCK_UN);
+	# Synchronize writing to file via advisory locking...
+	flock( $self->{handle}, LOCK_EX );
+	my $result = $self->{handle}->print( $log_msg . "\n" );
+	flock( $self->{handle}, LOCK_UN );
 
-    return $result;
+	return $result;
 }
 
 sub CLOSE {
-    my ($self) = @_;
-    $self->{handle}->close();
+	my ($self) = @_;
+	$self->{handle}->close();
 }
 
-1; # Magic true value required at end of module
+1;    # Magic true value required at end of module
 __END__
 
 =head1 NAME
