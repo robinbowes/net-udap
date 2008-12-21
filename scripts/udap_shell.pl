@@ -20,7 +20,7 @@
 use strict;
 use warnings;
 
-# Add the modules to the libpath
+# Add the Net-UDAP modules to the libpath
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 

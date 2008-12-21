@@ -20,10 +20,6 @@ package Net::UDAP::Log;
 use strict;
 use warnings;
 
-# Add the modules to the libpath
-use FindBin;
-use lib "$FindBin::Bin/../src/Net-UDAP/lib";
-
 use version; our $VERSION = qv('1.0_01');
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
