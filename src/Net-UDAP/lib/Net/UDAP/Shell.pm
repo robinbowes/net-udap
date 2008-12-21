@@ -20,10 +20,6 @@ package Net::UDAP::Shell;
 use strict;
 use warnings;
 
-# Add the modules to the libpath
-use FindBin;
-use lib "$FindBin::Bin/../src/Net-UDAP/lib";
-
 use version; our $VERSION = qv('1.0_01');
 
 #use Getopt::Long;
