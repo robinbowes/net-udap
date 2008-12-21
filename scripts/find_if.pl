@@ -25,7 +25,7 @@ use version; our $VERSION = qv('0.1');
 
 use Data::Dumper;
 
-# Add the modules to the libpath
+# Add the Net-UDAP modules to the libpath
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 

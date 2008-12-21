@@ -20,7 +20,7 @@
 use strict;
 use warnings;
 
-# Add the modules to the libpath
+# Add the Net-UDAP modules to the libpath
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
@@ -43,74 +43,74 @@ $| = 1;
 # Create the socket
 my $udap = Net::UDAP->new;
 
+
 # Send the discovery packet
 
 $udap->discover( { advanced => 1 } );
 
 # Get the hash of discovered devices
-my $discovered_devices_ref = $udap->get_devices;
+my $discovered_devices_ref = $udap->get_device_list;
 
 if ($discovered_devices_ref) {
 
-	foreach my $device ( values %{$discovered_devices_ref} ) {
-		$udap->set_ip(
-			{   mac => $device->get_mac,
+    foreach my $device ( values %{$discovered_devices_ref} ) {
+        $udap->set_ip(
+            {   mac         => $device->get_mac,
+#                data_to_set => {
+#                    ip      => '172.29.28.27',
+#                    netmask => '255.255.0.0',
+#                    gateway => '172.28.28.1',
+#                }
+            }
+        ) if 0;
+        
+        $udap->get_ip( { mac => $device->get_mac } ) if 0;
 
-				#                data_to_set => {
-				#                    ip      => '172.29.28.27',
-				#                    netmask => '255.255.0.0',
-				#                    gateway => '172.28.28.1',
-				#                }
-			}
-		) if 0;
-
-		$udap->get_ip( { mac => $device->get_mac } ) if 0;
-
-		$udap->get_data(
-			{   mac         => $device->get_mac,
-				data_to_get => [
-					qw(
-						lan_ip_mode
-						lan_network_address
-						lan_subnet_mask
-						lan_gateway
-						hostname
-						bridging
-						interface
-						primary_dns
-						secondary_dns
-						server_address
-						slimserver_address
-						slimserver_name
-						wireless_wireless_mode
-						wireless_SSID
-						wireless_channel
-						wireless_region_id
-						wireless_keylen
-						wireless_wep_key_0
-						wireless_wep_key_1
-						wireless_wep_key_2
-						wireless_wep_key_3
-						wireless_wep_on
-						wireless_wpa_cipher
-						wireless_wpa_mode
-						wireless_wpa_enabled
-						wireless_wpa_psk
-						)
-				],
-			}
-		) if 0;
-		$udap->set_data(
-			{   mac         => $device->get_mac,
-				data_to_set => {
-					wireless_wireless_mode => WLAN_MODE_INFRASTRUCTURE,
-					wireless_wep_on        => WLAN_WEP_ON,
-					wireless_wep_key_0     => 'abcde',
-				},
-			}
-		) if 0;
-	}
-	print Dumper \$discovered_devices_ref;
+        $udap->get_data(
+            {   mac         => $device->get_mac,
+                data_to_get => [
+                    qw(
+                        lan_ip_mode
+                        lan_network_address
+                        lan_subnet_mask
+                        lan_gateway
+                        hostname
+                        bridging
+                        interface
+                        primary_dns
+                        secondary_dns
+                        server_address
+                        slimserver_address
+                        slimserver_name
+                        wireless_wireless_mode
+                        wireless_SSID
+                        wireless_channel
+                        wireless_region_id
+                        wireless_keylen
+                        wireless_wep_key_0
+                        wireless_wep_key_1
+                        wireless_wep_key_2
+                        wireless_wep_key_3
+                        wireless_wep_on
+                        wireless_wpa_cipher
+                        wireless_wpa_mode
+                        wireless_wpa_enabled
+                        wireless_wpa_psk
+                        )
+                ],
+            }
+        ) if 0;
+        $udap->set_data(
+            {   mac         => $device->get_mac,
+                data_to_set => {
+                    wireless_wireless_mode => WLAN_MODE_INFRASTRUCTURE,
+                    wireless_wep_on        => WLAN_WEP_ON,
+                    wireless_wep_key_0     => 'abcde',
+                },
+            }
+        ) if 0;
+    }
+    print Dumper \$discovered_devices_ref;
 }
 
 # Set the IP and wireless information for the first device
