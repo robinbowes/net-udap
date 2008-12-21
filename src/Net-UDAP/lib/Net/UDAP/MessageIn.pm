@@ -1,5 +1,6 @@
 package Net::UDAP::MessageIn;
 
+#
 # $Id$
 #
 # Copyright (c) 2008 by Robin Bowes <robin@robinbowes.com>
