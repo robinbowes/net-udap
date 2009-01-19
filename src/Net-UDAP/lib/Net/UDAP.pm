@@ -292,7 +292,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
 		my $mac = decode_mac( $msg_ref->get_src_mac );
 		log( info =>
 				"  $ucp_method_name->{$method} response received from $mac\n"
-		);
+		) if defined $mac;
 		return $handler->( $self, $msg_ref );
 	}
 

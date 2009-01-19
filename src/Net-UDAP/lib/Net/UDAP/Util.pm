@@ -49,6 +49,7 @@ use Socket;
 		# $fmt		- the format to use to unpack each byte
 		# $separator	- the string to use as separator in the output string
 		my ( $rawstr, $strlen, $fmt, $separator ) = @_;
+		return if !$rawstr;
 		$separator = '' if !defined $separator;
 		if ( length($rawstr) == $strlen ) {
 			my @parts = unpack( "($fmt)*", $rawstr );
@@ -63,7 +64,7 @@ use Socket;
 			carp 'Supplied string has length '
 				. length($rawstr)
 				. " (expected length: $strlen)";
-			return undef;
+			return;
 		}
 	}
 
@@ -88,7 +89,7 @@ use Socket;
 		else {
 			carp
 				"MAC address \"$mac\" not in expected format (xx:xx:xx:xx:xx:xx or xxxxxxxxxxxx)";
-			return undef;
+			return;
 		}
 	}
 
@@ -97,6 +98,7 @@ use Socket;
 		# Decode a 6-byte MAC string into human-readable form
 		# $rawstr	- 6-byte hex string representing MAC address
 		my $rawstr = shift;
+		return if !$rawstr;
 		return decode_hex( $rawstr, 6, 'H2', ':' );
 	}
 

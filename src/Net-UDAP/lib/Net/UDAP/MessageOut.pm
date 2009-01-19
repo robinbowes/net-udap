@@ -258,7 +258,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 			log(      error => '  msg method '
 					. $ucp_method_name->{$method}
 					. " not implemented\n" );
-			return undef;
+			return;
 		}
 
 		# print "packed msg in MessageOut.packed:\n" . HexDump( $str);
