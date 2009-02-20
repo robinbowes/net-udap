@@ -159,7 +159,7 @@ use Socket;
         }
         elsif ( $^O =~ /solaris/ ) {
             $syscmd = '/usr/sbin/ifconfig -a4';
-            $regex = qr{^\s+inet ((?:\d{1,3}\.){3}\d{1,3})};
+            $regex  = qr{^\s+inet ((?:\d{1,3}\.){3}\d{1,3})};
         }
         else {
             $syscmd = '/sbin/ifconfig';
@@ -169,9 +169,9 @@ use Socket;
         for my $line (@output) {
             if ( $line =~ /$regex/ ) {
                 my $ip = $1;
-                if ( $ip ne '127.0.0.1' ) {
-                    push @ips, $ip;
-                }
+
+                # ignore loopback and zero addresses
+                push @ips, $ip unless grep {$ip} qw{ '127.0.0.1' '0.0.0.0'};
             }
         }
         return @ips;
