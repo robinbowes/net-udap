@@ -106,7 +106,7 @@ use Socket;
 
         # Decode a 6-byte MAC string into human-readable form
         # $rawstr	- 6-byte hex string representing MAC address
-        my $rawstr = shift;
+        my $rawstr = shift || return;
         return decode_hex( $rawstr, 6, 'H2', ':' );
     }
 
@@ -156,6 +156,10 @@ use Socket;
         if ( $^O =~ /Win|cygwin/ ) {
             $syscmd = 'ipconfig';
             $regex  = qr{IP Address.* ((?:\d{1,3}\.){3}\d{1,3})};
+        }
+        elsif ( $^O =~ /solaris/ ) {
+            $syscmd = '/usr/sbin/ifconfig -a4';
+            $regex = qr{^\s+inet ((?:\d{1,3}\.){3}\d{1,3})};
         }
         else {
             $syscmd = '/sbin/ifconfig';

@@ -120,7 +120,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
             croak('raw msg not set');
         };
 
-        # print "\$raw_msg in MessageIn::udap_decode\n" . HexDump($raw_msg);
+        #print "\$raw_msg in MessageIn::udap_decode\n" . HexDump($raw_msg);
 
         # Initialise offset from start of raw string
         # This is incremented as we read characters from the string
@@ -282,7 +282,13 @@ __PACKAGE__->mk_accessors( keys %field_default );
                     #};
 
                     log( debug => "    data string: $data_string\n" );
-
+                    
+                    #warn '$param_offset: ' . $param_offset;
+                    #warn '$data_string: ' . HexDump($data_string); 
+                    
+                    
+                    last SWITCH if !$param_offset;
+                    
                     $param_data_ref
                         ->{ $field_name_from_offset->{$param_offset} }
                         = $field_unpack_from_offset->{$param_offset}
