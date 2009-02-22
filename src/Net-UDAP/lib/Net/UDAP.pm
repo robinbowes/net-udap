@@ -363,10 +363,11 @@ __PACKAGE__->mk_accessors( keys %field_default );
             $self->get_device_hash->{$mac}
                 = Net::UDAP::Client->new($device_data_ref);
         }
-        else {
-            carp('mac not found in msg');
-            return;
-        }
+
+        #else {
+        #    carp('mac not found in msg');
+        #    return;
+        #}
     }
 
     sub update_client {
@@ -380,9 +381,10 @@ __PACKAGE__->mk_accessors( keys %field_default );
             $self->get_device_hash->{$mac}
                 ->update( $msg_ref->get_device_data_ref );
         }
-        else {
-            carp "MAC address not defined";
-        }
+
+        #else {
+        #    carp "MAC address not defined";
+        #}
     }
 }
 
