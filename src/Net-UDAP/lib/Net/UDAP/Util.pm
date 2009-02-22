@@ -148,7 +148,6 @@ use Socket;
     sub get_local_addresses {
 
         # This is a dirty hack to get IP addresses in use on the system
-        my @ips = qw( );
         my $syscmd;
         my $regex;
 
@@ -166,15 +165,17 @@ use Socket;
             $regex  = qr{inet addr:((?:\d{1,3}\.){3}\d{1,3})};
         }
         my @output = qx/$syscmd/;
+
+        my %ips;
         for my $line (@output) {
             if ( $line =~ /$regex/ ) {
                 my $ip = $1;
 
                 # ignore loopback and zero addresses
-                push @ips, $ip unless grep {$ip} qw{ '127.0.0.1' '0.0.0.0'};
+                $ips{$ip} = 1 unless grep {/$ip/} qw{'127.0.0.1' '0.0.0.0'};
             }
         }
-        return @ips;
+        return \%ips;
     }
 
     sub detect_local_ip {

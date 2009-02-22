@@ -65,11 +65,8 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
         $self->set_socket(create_socket);
 
-        # Create a hash keyed on local IP addresses
-        my @local_ips = get_local_addresses;
-        my %temp_hash;
-        @temp_hash{@local_ips} = ();
-        $self->set_local_ips( \%temp_hash );
+        # local_ips is a hash of local IP addresses
+        $self->set_local_ips( get_local_addresses );
         return $self;
     }
 
