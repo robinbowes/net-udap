@@ -281,7 +281,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
                     #    print "squeezecenter_name data string in MessageIn::udap_decode", HexDump($data_string);
                     #};
 
-                    log( debug => "    data string: $data_string\n" );
+                    log( debug => "    data string: " . HexDump($data_string) . "\n" );
                     
                     #warn '$param_offset: ' . $param_offset;
                     #warn '$data_string: ' . HexDump($data_string); 
