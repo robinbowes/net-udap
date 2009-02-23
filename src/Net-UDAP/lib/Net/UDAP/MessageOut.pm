@@ -78,7 +78,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
         # values from $arg_ref over-write the defaults
         my %arg = ( %fields_default, %{$arg_ref} );
-
+        
         # A method must be specified, i.e. what type of packet is this?
         my $method = $arg{ucp_method};
         (          ( defined($method) )
@@ -98,7 +98,10 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 # Set values specific to discovery packets
                 $arg{dst_broadcast} = BROADCAST_ON;
                 $arg{dst_mac}       = MAC_ZERO;
-                $arg{src_ip}        = detect_local_ip;
+                croak(    'Must specify IP address for '
+                        . $ucp_method_name->{$method}
+                        . ' msgs.' )
+                    unless $arg{src_ip};
                 last SWITCH;
                 };
 

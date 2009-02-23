@@ -66,7 +66,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $self->set_socket(create_socket);
 
         # local_ips is a hash of local IP addresses
-        $self->set_local_ips( get_local_addresses );
+        $self->set_local_ips(get_local_addresses);
         return $self;
     }
 
@@ -94,8 +94,11 @@ __PACKAGE__->mk_accessors( keys %field_default );
         # Empty the device list
         $self->set_device_hash( {} );
 
-        if ( $self->send_msg( undef, $ucp_method, $arg_ref ) ) {
-            $self->read_responses;
+        foreach my $ip ( values %{ $self->get_local_ips } ) {
+            $arg_ref->{src_ip} = $ip;
+            if ( $self->send_msg( undef, $ucp_method, $arg_ref ) ) {
+                $self->read_responses;
+            }
         }
         return;
     }
@@ -184,21 +187,21 @@ __PACKAGE__->mk_accessors( keys %field_default );
             $encoded_mac = encode_mac($mac);
         }
 
+        my $msg_args = {
+            ucp_method  => $ucp_method,
+            dst_mac     => $encoded_mac,
+            data_to_get => $arg_ref->{data_to_get},
+            data_to_set => $arg_ref->{data_to_set},
+        };
+
+        $msg_args->{src_ip} = $arg_ref->{src_ip} if $arg_ref->{src_ip};
+
         my $msg_ref;
-        eval {
-            $msg_ref = Net::UDAP::MessageOut->new(
-                {   ucp_method  => $ucp_method,
-                    dst_mac     => $encoded_mac,
-                    data_to_get => $arg_ref->{data_to_get},
-                    data_to_set => $arg_ref->{data_to_set},
-                }
-            );
-            }
+        eval { $msg_ref = Net::UDAP::MessageOut->new($msg_args) }
             or do {
             carp($@);
             return;
             };
-
         my $sock    = $self->get_socket;
         my $dest_ip = inet_ntoa(INADDR_BROADCAST);
         my $dest    = pack_sockaddr_in( PORT_UDAP, INADDR_BROADCAST );

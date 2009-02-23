@@ -172,7 +172,7 @@ use Socket;
                 my $ip = $1;
 
                 # ignore loopback and zero addresses
-                $ips{$ip} = 1 unless grep {/$ip/} qw{'127.0.0.1' '0.0.0.0'};
+                $ips{$ip} = inet_aton($ip) unless grep {/$ip/} qw{'127.0.0.1' '0.0.0.0'};
             }
         }
         return \%ips;
