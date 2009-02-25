@@ -29,7 +29,7 @@ use Exporter qw(import);
 
 %EXPORT_TAGS = (
     all => [
-        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip set_blocking get_local_addresses)
+        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip blocking local_addresses)
     ]
 );
 Exporter::export_tags('all');
@@ -102,7 +102,7 @@ use Socket;
 
         # Decode a 6-byte MAC string into human-readable form
         # $rawstr	- 6-byte hex string representing MAC address
-        my $rawstr = shift;
+        my $rawstr = shift || return;
         return decode_hex( $rawstr, 6, 'H2', ':' );
     }
 
@@ -135,16 +135,15 @@ use Socket;
         }
 
         # Now set socket non-blocking in a way that works on Windows
-        if ( !set_blocking( $sock, 0 ) ) {
+        if ( !blocking( $sock, 0 ) ) {
             croak "error setting socket non-blocking";
         }
         return $sock;
     }
 
-    sub get_local_addresses {
+    sub local_addresses {
 
         # This is a dirty hack to get IP addresses in use on the system
-        my @ips = qw( );
         my $syscmd;
         my $regex;
 
@@ -153,20 +152,26 @@ use Socket;
             $syscmd = 'ipconfig';
             $regex  = qr{IP Address.* ((?:\d{1,3}\.){3}\d{1,3})};
         }
+        elsif ( $^O =~ /solaris/ ) {
+            $syscmd = '/usr/sbin/ifconfig -a4';
+            $regex  = qr{^\s+inet ((?:\d{1,3}\.){3}\d{1,3})};
+        }
         else {
             $syscmd = '/sbin/ifconfig';
             $regex  = qr{inet addr:((?:\d{1,3}\.){3}\d{1,3})};
         }
         my @output = qx/$syscmd/;
+
+        my %ips;
         for my $line (@output) {
             if ( $line =~ /$regex/ ) {
                 my $ip = $1;
-                if ( $ip ne '127.0.0.1' ) {
-                    push @ips, $ip;
-                }
+
+                # ignore loopback and zero addresses
+                $ips{$ip} = inet_aton($ip) unless grep {/$ip/} qw{'127.0.0.1' '0.0.0.0'};
             }
         }
-        return @ips;
+        return \%ips;
     }
 
     sub detect_local_ip {
@@ -215,13 +220,13 @@ use Socket;
         return $address;
     }
 
-=head2 set_blocking( $sock, [0 | 1] )
+=head2 blocking( $sock, [0 | 1] )
 
 Set the passed socket to be blocking (1) or non-blocking (0)
 
 =cut
 
-    sub set_blocking {
+    sub blocking {
 
         my ( $sock, $block_val ) = @_;
 

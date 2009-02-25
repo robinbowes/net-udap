@@ -33,9 +33,8 @@ use Net::UDAP::Util;
 
 $| = 1;
 
-my @ips = get_local_addresses;
-
-print join ',', @ips;
+my $ips = local_addresses;
+print join ',', keys %$ips;
 print "\n";
 
 # vim:set softtabstop=4:

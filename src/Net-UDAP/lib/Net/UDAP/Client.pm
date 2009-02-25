@@ -42,7 +42,6 @@ my %other_codes_default = (
 my %fields_default
     = ( %$field_default_from_name, %$ucp_code_default, %other_codes_default );
 
-__PACKAGE__->follow_best_practice;
 __PACKAGE__->mk_accessors( keys(%fields_default) );
 
 {
@@ -78,34 +77,34 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
     sub load {
         my ( $self, $udap ) = @_;
-        my $device_mac = $self->get_mac;
+        my $device_mac = $self->mac;
         $udap->get_ip($device_mac);
         $udap->get_data( $device_mac,
             { data_to_get => [ keys %$field_default_from_name ] } );
 
-        @{ $self->get_fields_from_device }{ keys %$field_default_from_name }
+        @{ $self->fields_from_device }{ keys %$field_default_from_name }
             = @{$self}{ keys %$field_default_from_name };
     }
 
     sub save_data {
         my ( $self, $udap ) = @_;
-        my $device_mac  = $self->get_mac;
-        my $data_to_set = $self->get_modified_fields;
-        $udap->set_data( $device_mac,
-            { data_to_set => $self->get_modified_fields } );
+        my $device_mac  = $self->mac;
+        my $data_to_set = $self->modified_fields;
+        $udap->data( $device_mac,
+            { data_to_set => $self->modified_fields } );
     }
 
     sub save_ip {
         my ( $self, $udap ) = @_;
-        my $device_mac  = $self->get_mac;
-        my $data_to_set = $self->get_modified_fields;
+        my $device_mac  = $self->mac;
+        my $data_to_set = $self->modified_fields;
         $udap->set_ip(
             $device_mac,
             {   data_to_set => {
-                    lan_network_address => $self->get_lan_network_address,
-                    lan_subnet_mask     => $self->get_lan_subnet_mask,
-                    lan_gateway         => $self->get_lan_gateway,
-                    lan_ip_mode         => $self->get_lan_ip_mode,
+                    lan_network_address => $self->lan_network_address,
+                    lan_subnet_mask     => $self->lan_subnet_mask,
+                    lan_gateway         => $self->lan_gateway,
+                    lan_ip_mode         => $self->lan_ip_mode,
                 }
             }
         );
@@ -113,16 +112,16 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
     sub reset {
         my ( $self, $udap ) = @_;
-        $udap->reset( $self->get_mac );
+        $udap->reset( $self->mac );
     }
 
-    sub get_modified_fields {
+    sub modified_fields {
         my $self            = shift;
         my $modified_fields = {};
         foreach my $fieldname ( keys %$field_default_from_name ) {
-            my $get_field = "get_$fieldname";
-            my $newval    = $self->$get_field;
-            my $oldval    = $self->get_fields_from_device->{$fieldname};
+            my $field = "$fieldname";
+            my $newval    = $self->$field;
+            my $oldval    = $self->fields_from_device->{$fieldname};
             if (    defined($newval)
                 and defined($oldval)
                 and $newval ne $oldval )
@@ -144,8 +143,8 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
     sub display_name {
         my $self  = shift;
-        my $dname = $self->get_device_type . ' ';
-        my @mac   = split( /:/, $self->get_mac );
+        my $dname = $self->device_type . ' ';
+        my @mac   = split( /:/, $self->mac );
         $dname .= $mac[3] . $mac[4] . $mac[5];
         return $dname;
     }
@@ -155,24 +154,23 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
         foreach my $param ( keys %{$arg_ref} ) {
-            my $set_sub = "set_$param";
-            $self->$set_sub( $arg_ref->{$param} );
+            $self->$param( $arg_ref->{$param} );
         }
 
         return $self;
     }
 
-    sub get_field_names {
+    sub field_names {
         return keys %$field_default_from_name;
     }
 
-    sub get_defined_fields {
+    sub defined_fields {
         my $self           = shift;
         my $defined_fields = {};
         foreach my $fieldname ( keys %fields_default ) {
-            my $get_field = "get_$fieldname";
-            if ( defined $self->$get_field ) {
-                $defined_fields->{$fieldname} = $self->$get_field;
+            my $field = "$fieldname";
+            if ( defined $self->$field ) {
+                $defined_fields->{$fieldname} = $self->$field;
             }
         }
         return $defined_fields;
