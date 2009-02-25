@@ -56,7 +56,6 @@ my %fields_default = (
     data_to_set => undef,  # store data to set as an anon hash
 );
 
-__PACKAGE__->follow_best_practice;
 __PACKAGE__->mk_accessors( keys(%fields_default) );
 
 {
@@ -163,19 +162,19 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         my $self = shift;
 
         # The first part of the msg is same for all msg types
-        my $str .= $self->get_dst_broadcast;
-        $str    .= $self->get_dst_type;
-        $str    .= $self->get_dst_mac;         # mac stored packed
-        $str    .= $self->get_src_broadcast;
-        $str    .= $self->get_src_type;
-        $str    .= $self->get_src_ip;
-        $str    .= $self->get_src_port;
-        $str    .= $self->get_seq;
-        $str    .= $self->get_udap_type;
-        $str    .= $self->get_ucp_flags;
-        $str    .= $self->get_ucp_class;
+        my $str .= $self->dst_broadcast;
+        $str    .= $self->dst_type;
+        $str    .= $self->dst_mac;         # mac stored packed
+        $str    .= $self->src_broadcast;
+        $str    .= $self->src_type;
+        $str    .= $self->src_ip;
+        $str    .= $self->src_port;
+        $str    .= $self->seq;
+        $str    .= $self->udap_type;
+        $str    .= $self->ucp_flags;
+        $str    .= $self->ucp_class;
 
-        my $method = $self->get_ucp_method;
+        my $method = $self->ucp_method;
         $str .= $method;
 
     SWITCH: {
@@ -190,7 +189,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             ( $method eq UCP_METHOD_SET_IP ) && do {
 
                 # IP Address, Netmask, Gateway
-                my $dts = $self->get_data_to_set->{ip};
+                my $dts = $self->data_to_set->{ip};
                 $str .= exists $dts->{ip} ? inet_aton( $dts->{ip} ) : IP_ZERO;
                 $str .=
                     exists $dts->{netmask}
@@ -205,10 +204,10 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             };
             ( $method eq UCP_METHOD_GET_DATA ) && do {
 
-                $str .= $self->get_credentials;
-                $str .= pack( 'n', scalar @{ $self->get_data_to_get } )
+                $str .= $self->credentials;
+                $str .= pack( 'n', scalar @{ $self->data_to_get } )
                     ;    # no. of data items
-                foreach my $param_name ( @{ $self->get_data_to_get } ) {
+                foreach my $param_name ( @{ $self->data_to_get } ) {
                     if ( exists $field_offset_from_name->{$param_name} ) {
                         $str .= pack( 'n',
                             $field_offset_from_name->{$param_name} );
@@ -225,15 +224,15 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             };
             ( $method eq UCP_METHOD_SET_DATA ) && do {
 
-                # set_data method is in the following format:
+                # set_data data is in the following format:
                 #  - credentials
                 #  - number of items
                 #  - repeating group of:
                 #    ( offset, data_length, data )
-                $str .= $self->get_credentials;
+                $str .= $self->credentials;
 
-             # no. of items is count of number of keys in get_data_to_set hash
-                my $data = $self->get_data_to_set;
+             # no. of items is count of number of keys in data_to_set hash
+                my $data = $self->data_to_set;
                 $str .= pack( 'n', scalar( keys %{$data} ) );
                 foreach my $pname ( keys %{$data} ) {
                     $str .= pack( 'n', $field_offset_from_name->{$pname} );
@@ -251,13 +250,13 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
                 #  - subnet mask
                 #  - gateway
                 #  - ip mode (DHCP or static)
-                my $data = $self->get_data_to_set;
+                my $data = $self->data_to_set;
                 foreach my $fieldname (
                     qw(lan_network_address lan_subnet_mask lan_gateway lan_ip_mode)
                     )
                 {
                     $str .= $field_pack_from_name->$data->{$fieldname}
-                        ->( $self->get_data_to_set->{$fieldname} );
+                        ->( $self->data_to_set->{$fieldname} );
                 }
                 last SWITCH;
             };

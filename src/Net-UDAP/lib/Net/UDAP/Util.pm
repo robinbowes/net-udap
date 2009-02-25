@@ -33,7 +33,7 @@ use Exporter qw(import);
 
 %EXPORT_TAGS = (
     all => [
-        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip set_blocking get_local_addresses)
+        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip blocking local_addresses)
     ]
 );
 Exporter::export_tags('all');
@@ -139,13 +139,13 @@ use Socket;
         }
 
         # Now set socket non-blocking in a way that works on Windows
-        if ( !set_blocking( $sock, 0 ) ) {
+        if ( !blocking( $sock, 0 ) ) {
             croak "error setting socket non-blocking";
         }
         return $sock;
     }
 
-    sub get_local_addresses {
+    sub local_addresses {
 
         # This is a dirty hack to get IP addresses in use on the system
         my $syscmd;
@@ -224,13 +224,13 @@ use Socket;
         return $address;
     }
 
-=head2 set_blocking( $sock, [0 | 1] )
+=head2 blocking( $sock, [0 | 1] )
 
 Set the passed socket to be blocking (1) or non-blocking (0)
 
 =cut
 
-    sub set_blocking {
+    sub blocking {
 
         my ( $sock, $block_val ) = @_;
 
