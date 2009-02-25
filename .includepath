@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<includepath>
-  <includepathentry path="${resource_loc:/net-udap (1.0.x branch)/src/Net-UDAP/lib}" />
-</includepath>
-
