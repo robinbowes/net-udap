@@ -20,10 +20,6 @@ package Net::UDAP::Util;
 use strict;
 use warnings;
 
-# Add the modules to the libpath
-use FindBin;
-use lib "$FindBin::Bin/../src/Net-UDAP/lib";
-
 use version; our $VERSION = qv('1.0_01');
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
@@ -47,11 +43,11 @@ use Socket;
 
     sub decode_hex {
 
-        # Decode a hex string of specified length into a human-readable string
-        # $rawstr	- the raw hex string
-        # $strlen	- the length of the hex string
-        # $fmt		- the format to use to unpack each byte
-        # $separator	- the string to use as separator in the output string
+# Decode a hex string of specified length into a human-readable string
+# $rawstr	- the raw hex string
+# $strlen	- the length of the hex string
+# $fmt		- the format to use to unpack each byte
+# $separator	- the string to use as separator in the output string
         my ( $rawstr, $strlen, $fmt, $separator ) = @_;
         return if !$rawstr;
         $separator = '' if !defined $separator;
@@ -169,7 +165,7 @@ use Socket;
             $regex  = qr{inet addr:((?:\d{1,3}\.){3}\d{1,3})};
         }
         my @output = qx/$syscmd/;
-        
+
         my %ips;
         for my $line (@output) {
             if ( $line =~ /$regex/ ) {

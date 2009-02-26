@@ -20,10 +20,6 @@ package Net::UDAP::Log;
 use strict;
 use warnings;
 
-# Add the Net-UDAP modules to the libpath
-use FindBin;
-use lib "$FindBin::Bin/../src/Net-UDAP/lib";
-
 use version; our $VERSION = qv('1.0_01');
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
@@ -34,27 +30,27 @@ use Exporter qw(import);
 Exporter::export_tags('all');
 
 use Log::StdLog {
-	handle => *STDERR,
-	level  => 'debug',
-	format => \&std_log_format,
+    handle => *STDERR,
+    level  => 'debug',
+    format => \&std_log_format,
 };
 
 {
 
-	sub log {
+    sub log {
 
-		# A wrapper round the Log::StdLog semantics to make logging easier
-		# Also, avoids the need to use the complex use statement in
-		# all code requiring logging
-		print {*STDLOG} (@_);
-	}
+        # A wrapper round the Log::StdLog semantics to make logging easier
+        # Also, avoids the need to use the complex use statement in
+        # all code requiring logging
+        print {*STDLOG} (@_);
+    }
 
-	sub std_log_format {
+    sub std_log_format {
 
-		# a subroutine that Log::StdLog will use  to format log msgs
-		my ( $date, $pid, $level, @message ) = @_;
-		return "$level: " . join( q{}, @message );
-	}
+        # a subroutine that Log::StdLog will use  to format log msgs
+        my ( $date, $pid, $level, @message ) = @_;
+        return "$level: " . join( q{}, @message );
+    }
 
 }
 1;    # Magic true value required at end of module

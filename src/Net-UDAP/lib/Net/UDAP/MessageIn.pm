@@ -20,13 +20,9 @@ package Net::UDAP::MessageIn;
 use strict;
 use warnings;
 
-# Add the Net-UDAP modules to the libpath
-use FindBin;
-use lib "$FindBin::Bin/../src/Net-UDAP/lib";
-
 use version; our $VERSION = qv('1.0_01');
 
-use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
+use vars qw( $AUTOLOAD );                    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 use Carp;
@@ -37,279 +33,279 @@ use Net::UDAP::Util;
 use Net::UDAP::Log;
 
 my %field_default = (
-	raw_msg         => undef,
-	dst_broadcast   => undef,
-	dst_addr_type   => undef,
-	dst_mac         => undef,
-	dst_ip          => undef,
-	dst_port        => undef,
-	src_broadcast   => undef,
-	src_addr_type   => undef,
-	src_mac         => undef,
-	src_ip          => undef,
-	src_port        => undef,
-	seq             => undef,
-	udap_type       => undef,
-	ucp_flags       => undef,
-	uap_class       => undef,
-	ucp_method      => undef,
-	device_data_ref => undef,    # hash containing decoded client data
-	                             # param_name => param_value
+    raw_msg         => undef,
+    dst_broadcast   => undef,
+    dst_addr_type   => undef,
+    dst_mac         => undef,
+    dst_ip          => undef,
+    dst_port        => undef,
+    src_broadcast   => undef,
+    src_addr_type   => undef,
+    src_mac         => undef,
+    src_ip          => undef,
+    src_port        => undef,
+    seq             => undef,
+    udap_type       => undef,
+    ucp_flags       => undef,
+    uap_class       => undef,
+    ucp_method      => undef,
+    device_data_ref => undef,    # hash containing decoded client data
+                                 # param_name => param_value
 );
 
 __PACKAGE__->mk_accessors( keys %field_default );
 
 {
 
-	sub new {
-		my ( $caller, $arg_ref ) = @_;
-		my $class = ref $caller || $caller;
+    sub new {
+        my ( $caller, $arg_ref ) = @_;
+        my $class = ref $caller || $caller;
 
-		# Define arg hash ref if no args passed
-		$arg_ref = {} unless ref($arg_ref) eq 'HASH';
+        # Define arg hash ref if no args passed
+        $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
-		# Define device_data hash ref if not defined
-		$arg_ref->{device_data_ref} = {}
-			unless ref( $arg_ref->{device_data_ref} ) eq 'HASH';
+        # Define device_data hash ref if not defined
+        $arg_ref->{device_data_ref} = {}
+            unless ref( $arg_ref->{device_data_ref} ) eq 'HASH';
 
-		# Values from $arg_ref over-write the default values
-		my %arg = ( %field_default, %{$arg_ref} );
+        # Values from $arg_ref over-write the default values
+        my %arg = ( %field_default, %{$arg_ref} );
 
-		my $self = bless {%arg}, $class;
+        my $self = bless {%arg}, $class;
 
-		if ( defined $self->raw_msg ) {
-			eval { $self->udap_decode; } or do {
-				carp($@);
-				return;
-				}
-		}
-		return $self;
-	}
+        if ( defined $self->raw_msg ) {
+            eval { $self->udap_decode; } or do {
+                carp($@);
+                return;
+                }
+        }
+        return $self;
+    }
 
-	sub update_device_data {
-		my ( $self, $arg_ref ) = @_;
+    sub update_device_data {
+        my ( $self, $arg_ref ) = @_;
 
-		# Define hash ref if no args passed
-		$arg_ref = {} unless ref($arg_ref) eq 'HASH';
+        # Define hash ref if no args passed
+        $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
-		my $device_data_ref = $self->device_data_ref;
+        my $device_data_ref = $self->device_data_ref;
 
-		# Update the device_data hash with the new values
-		# No need to write the device_data hash back since
-		# we're working with a reference to it
+        # Update the device_data hash with the new values
+        # No need to write the device_data hash back since
+        # we're working with a reference to it
 
-		@$device_data_ref{ keys %{$arg_ref} } = values %{$arg_ref};
+        @$device_data_ref{ keys %{$arg_ref} } = values %{$arg_ref};
 
-		return;
-	}
+        return;
+    }
 
-	sub prepare_credential {
+    sub prepare_credential {
 
-		# return 32 packed hex zeros
-		return pack( 'C' x 32, (0x00) x 32 );
-	}
+        # return 32 packed hex zeros
+        return pack( 'C' x 32, (0x00) x 32 );
+    }
 
-	sub udap_decode {
-		my $self = shift;
+    sub udap_decode {
+        my $self = shift;
 
-		my $raw_msg = $self->raw_msg;
+        my $raw_msg = $self->raw_msg;
 
-		( !defined $raw_msg ) && do {
-			croak('raw msg not set');
-		};
+        ( !defined $raw_msg ) && do {
+            croak('raw msg not set');
+        };
 
-		# print "\$raw_msg in MessageIn::udap_decode\n" . HexDump($raw_msg);
+        # print "\$raw_msg in MessageIn::udap_decode\n" . HexDump($raw_msg);
 
-		# Initialise offset from start of raw string
-		# This is incremented as we read characters from the string
-		my $os = 0;
+        # Initialise offset from start of raw string
+        # This is incremented as we read characters from the string
+        my $os = 0;
 
-		# get dst_broadcast
-		$self->dst_broadcast( substr( $raw_msg, $os, 1 ) );
-		$os += 1;
+        # get dst_broadcast
+        $self->dst_broadcast( substr( $raw_msg, $os, 1 ) );
+        $os += 1;
 
-		# get dst addr type
-		$self->dst_addr_type( substr( $raw_msg, $os, 1 ) );
-		$os += 1;
+        # get dst addr type
+        $self->dst_addr_type( substr( $raw_msg, $os, 1 ) );
+        $os += 1;
 
-	 # get *either* dst mac *or* dst IP + port, depending on the dst_addr_type
-	SWITCH: {
-			( $self->dst_addr_type eq ADDR_TYPE_ETH ) && do {
-				$self->dst_mac( substr( $raw_msg, $os, 6 ) );
-				last SWITCH;
-			};
-			( $self->dst_addr_type eq ADDR_TYPE_UDP ) && do {
-				$self->dst_ip( substr( $raw_msg, $os, 4 ) );
-				$self->dst_port( substr( $raw_msg, $os + 4, 2 ) );
-				last SWITCH;
-			};
+     # get *either* dst mac *or* dst IP + port, depending on the dst_addr_type
+    SWITCH: {
+            ( $self->dst_addr_type eq ADDR_TYPE_ETH ) && do {
+                $self->dst_mac( substr( $raw_msg, $os, 6 ) );
+                last SWITCH;
+            };
+            ( $self->dst_addr_type eq ADDR_TYPE_UDP ) && do {
+                $self->dst_ip( substr( $raw_msg, $os, 4 ) );
+                $self->dst_port( substr( $raw_msg, $os + 4, 2 ) );
+                last SWITCH;
+            };
 
-			# default action if dst address type not recognised
-			croak( 'Unknown dst_addr_type value found: '
-					. hexstr( $self->dst_addr_type, 4 ) );
-		}
-		$os += 6;
+            # default action if dst address type not recognised
+            croak( 'Unknown dst_addr_type value found: '
+                    . hexstr( $self->dst_addr_type, 4 ) );
+        }
+        $os += 6;
 
-		# set src_broadcast
-		$self->src_broadcast( substr( $raw_msg, $os, 1 ) );
-		$os += 1;
+        # set src_broadcast
+        $self->src_broadcast( substr( $raw_msg, $os, 1 ) );
+        $os += 1;
 
-		# set src addr type
-		$self->src_addr_type( substr( $raw_msg, $os, 1 ) );
-		$os += 1;
+        # set src addr type
+        $self->src_addr_type( substr( $raw_msg, $os, 1 ) );
+        $os += 1;
 
-	 # get *either* src mac *or* src IP + port, depending on the src_addr_type
-	SWITCH: {
-			( $self->src_addr_type eq ADDR_TYPE_ETH ) && do {
-				$self->src_mac( substr( $raw_msg, $os, 6 ) );
-				last SWITCH;
-			};
-			( $self->src_addr_type eq ADDR_TYPE_UDP ) && do {
-				$self->src_ip( substr( $raw_msg, $os, 4 ) );
-				$self->src_port( substr( $raw_msg, $os + 4, 2 ) );
-				last SWITCH;
-			};
+     # get *either* src mac *or* src IP + port, depending on the src_addr_type
+    SWITCH: {
+            ( $self->src_addr_type eq ADDR_TYPE_ETH ) && do {
+                $self->src_mac( substr( $raw_msg, $os, 6 ) );
+                last SWITCH;
+            };
+            ( $self->src_addr_type eq ADDR_TYPE_UDP ) && do {
+                $self->src_ip( substr( $raw_msg, $os, 4 ) );
+                $self->src_port( substr( $raw_msg, $os + 4, 2 ) );
+                last SWITCH;
+            };
 
-			# default action if src address type not recognised
-			croak( 'Unknown src_addr_type value found: '
-					. hexstr( $self->src_addr_type, 4 ) );
-		}
-		$os += 6;
+            # default action if src address type not recognised
+            croak( 'Unknown src_addr_type value found: '
+                    . hexstr( $self->src_addr_type, 4 ) );
+        }
+        $os += 6;
 
-		# seq
-		$self->seq( substr( $raw_msg, $os, 2 ) );
-		$os += 2;
+        # seq
+        $self->seq( substr( $raw_msg, $os, 2 ) );
+        $os += 2;
 
-		# udap type
-		$self->udap_type( substr( $raw_msg, $os, 2 ) );
-		$os += 2;
+        # udap type
+        $self->udap_type( substr( $raw_msg, $os, 2 ) );
+        $os += 2;
 
-		# flag
-		$self->ucp_flags( substr( $raw_msg, $os, 1 ) );
-		$os += 1;
+        # flag
+        $self->ucp_flags( substr( $raw_msg, $os, 1 ) );
+        $os += 1;
 
-		# uap class
-		$self->uap_class( substr( $raw_msg, $os, 4 ) );
-		$os += 4;
+        # uap class
+        $self->uap_class( substr( $raw_msg, $os, 4 ) );
+        $os += 4;
 
-		# ucp method
-		$self->ucp_method( substr( $raw_msg, $os, 2 ) );
-		$os += 2;
+        # ucp method
+        $self->ucp_method( substr( $raw_msg, $os, 2 ) );
+        $os += 2;
 
-		# Now, do different things depending on what packet type this is
-	SWITCH: {
+        # Now, do different things depending on what packet type this is
+    SWITCH: {
 
-			(          ( $self->ucp_method eq UCP_METHOD_DISCOVER )
-					or ( $self->ucp_method eq UCP_METHOD_ADV_DISCOVER )
-					or ( $self->ucp_method eq UCP_METHOD_GET_IP )
-				)
-				&& do {
+            (          ( $self->ucp_method eq UCP_METHOD_DISCOVER )
+                    or ( $self->ucp_method eq UCP_METHOD_ADV_DISCOVER )
+                    or ( $self->ucp_method eq UCP_METHOD_GET_IP )
+                )
+                && do {
 
-				# The rest of the packet is in the format:
-				#   ucp_code, length, data
+                # The rest of the packet is in the format:
+                #   ucp_code, length, data
 
-				my $param_data_ref = {};
+                my $param_data_ref = {};
 
-				while ( $os < length($raw_msg) ) {
+                while ( $os < length($raw_msg) ) {
 
-					# get ucp code
-					my $ucp_code = substr( $raw_msg, $os, 1 );
-					$os += 1;
+                    # get ucp code
+                    my $ucp_code = substr( $raw_msg, $os, 1 );
+                    $os += 1;
 
-					# length of following string
-					my $data_length
-						= unpack( 'c', substr( $raw_msg, $os, 1 ) );
-					$os += 1;
+                    # length of following string
+                    my $data_length
+                        = unpack( 'c', substr( $raw_msg, $os, 1 ) );
+                    $os += 1;
 
-					# If the data is not present, $data_length will be 0
-					my $data
-						= ($data_length)
-						? substr( $raw_msg, $os, $data_length )
-						: '';
-					$os += $data_length;
+                    # If the data is not present, $data_length will be 0
+                    my $data
+                        = ($data_length)
+                        ? substr( $raw_msg, $os, $data_length )
+                        : '';
+                    $os += $data_length;
 
-					# add to the data hash
-					if ( exists $ucp_code_name->{$ucp_code} ) {
-						$param_data_ref->{ $ucp_code_name->{$ucp_code} }
-							= $ucp_code_unpack->{$ucp_code}->($data);
-					}
-					else {
-						log( warn => "  Invalid ucp_code: [$ucp_code]\n" );
-						return;
-					}
-				}
+                    # add to the data hash
+                    if ( exists $ucp_code_name->{$ucp_code} ) {
+                        $param_data_ref->{ $ucp_code_name->{$ucp_code} }
+                            = $ucp_code_unpack->{$ucp_code}->($data);
+                    }
+                    else {
+                        log( warn => "  Invalid ucp_code: [$ucp_code]\n" );
+                        return;
+                    }
+                }
 
-				$self->update_device_data($param_data_ref);
+                $self->update_device_data($param_data_ref);
 
-				last SWITCH;
-				};
+                last SWITCH;
+                };
 
-			( $self->ucp_method eq UCP_METHOD_GET_DATA ) && do {
+            ( $self->ucp_method eq UCP_METHOD_GET_DATA ) && do {
 
-				# get number of data items
-				my $num_items = unpack( 'n', substr( $raw_msg, $os, 2 ) );
-				$os += 2;
+                # get number of data items
+                my $num_items = unpack( 'n', substr( $raw_msg, $os, 2 ) );
+                $os += 2;
 
-				log( debug => "    num_items: $num_items\n" );
+                log( debug => "    num_items: $num_items\n" );
 
-				my $param_data_ref = {};
+                my $param_data_ref = {};
 
-				while ( $os < length($raw_msg) ) {
+                while ( $os < length($raw_msg) ) {
 
-					#get offset
-					my $param_offset
-						= unpack( 'n', substr( $raw_msg, $os, 2 ) );
-					$os += 2;
+                    #get offset
+                    my $param_offset
+                        = unpack( 'n', substr( $raw_msg, $os, 2 ) );
+                    $os += 2;
 
-					log( debug => "    param offset: $param_offset\n" );
+                    log( debug => "    param offset: $param_offset\n" );
 
-					#get length
-					my $data_length
-						= unpack( 'n', substr( $raw_msg, $os, 2 ) );
-					$os += 2;
+                    #get length
+                    my $data_length
+                        = unpack( 'n', substr( $raw_msg, $os, 2 ) );
+                    $os += 2;
 
-					log( debug => "    data length: $data_length\n" );
+                    log( debug => "    data length: $data_length\n" );
 
-					#get string
-					my $data_string = unpack( "a*",
-						substr( $raw_msg, $os, $data_length ) );
-					$os += $data_length;
+                    #get string
+                    my $data_string = unpack( "a*",
+                        substr( $raw_msg, $os, $data_length ) );
+                    $os += $data_length;
 
 #if ($field_name_from_offset->{$param_offset} eq 'squeezecenter_name') {
 #    print "squeezecenter_name data string in MessageIn::udap_decode", HexDump($data_string);
 #};
 
-					log( debug => "    data string: $data_string\n" );
+                    log( debug => "    data string: $data_string\n" );
 
-					$param_data_ref
-						->{ $field_name_from_offset->{$param_offset} }
-						= $field_unpack_from_offset->{$param_offset}
-						->($data_string);
-				}
-				$self->update_device_data($param_data_ref);
-				last SWITCH;
-			};
+                    $param_data_ref
+                        ->{ $field_name_from_offset->{$param_offset} }
+                        = $field_unpack_from_offset->{$param_offset}
+                        ->($data_string);
+                }
+                $self->update_device_data($param_data_ref);
+                last SWITCH;
+            };
 
-			( $self->ucp_method eq UCP_METHOD_SET_IP ) && do {
-				log( warn =>
-						'    Need to check contents of set_ip response msg' );
-				last SWITCH;
-			};
+            ( $self->ucp_method eq UCP_METHOD_SET_IP ) && do {
+                log( warn =>
+                        '    Need to check contents of set_ip response msg' );
+                last SWITCH;
+            };
 
-			# default action if ucp_method is not recognised goes here
-			if ( exists $ucp_method_name->{ $self->ucp_method } ) {
-				carp(     'ucp_method '
-						. $ucp_method_name->{ $self->ucp_method }
-						. ' callback not implemented yet' );
-				print "Raw msg:\n" . HexDump($raw_msg);
-			}
-			else {
-				croak( 'Unknown ucp_method value found: '
-						. hexstr( $self->ucp_method, 4 ) );
-			}
-		}
-		return $self;
-	}
+            # default action if ucp_method is not recognised goes here
+            if ( exists $ucp_method_name->{ $self->ucp_method } ) {
+                carp(     'ucp_method '
+                        . $ucp_method_name->{ $self->ucp_method }
+                        . ' callback not implemented yet' );
+                print "Raw msg:\n" . HexDump($raw_msg);
+            }
+            else {
+                croak( 'Unknown ucp_method value found: '
+                        . hexstr( $self->ucp_method, 4 ) );
+            }
+        }
+        return $self;
+    }
 }
 
 1;    # Magic true value required at end of module
