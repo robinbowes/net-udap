@@ -20,6 +20,10 @@ package Net::UDAP::Util;
 use strict;
 use warnings;
 
+# Add the modules to the libpath
+use FindBin;
+use lib "$FindBin::Bin/../src/Net-UDAP/lib";
+
 use version; our $VERSION = qv('1.0_01');
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
@@ -28,9 +32,9 @@ use Carp;
 use Exporter qw(import);
 
 %EXPORT_TAGS = (
-	all => [
-		qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip set_blocking get_local_addresses)
-	]
+    all => [
+        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip set_blocking get_local_addresses)
+    ]
 );
 Exporter::export_tags('all');
 
@@ -41,175 +45,189 @@ use Socket;
 
 {
 
-	sub decode_hex {
+    sub decode_hex {
 
-		# Decode a hex string of specified length into a human-readable string
-		# $rawstr	- the raw hex string
-		# $strlen	- the length of the hex string
-		# $fmt		- the format to use to unpack each byte
-		# $separator	- the string to use as separator in the output string
-		my ( $rawstr, $strlen, $fmt, $separator ) = @_;
-		return if !$rawstr;
-		$separator = '' if !defined $separator;
-		if ( length($rawstr) == $strlen ) {
-			my @parts = unpack( "($fmt)*", $rawstr );
-			if (wantarray) {
-				return @parts;
-			}
-			else {
-				return join( "$separator", @parts );
-			}
-		}
-		else {
-			carp 'Supplied string has length '
-				. length($rawstr)
-				. " (expected length: $strlen)";
-			return;
-		}
-	}
+        # Decode a hex string of specified length into a human-readable string
+        # $rawstr	- the raw hex string
+        # $strlen	- the length of the hex string
+        # $fmt		- the format to use to unpack each byte
+        # $separator	- the string to use as separator in the output string
+        my ( $rawstr, $strlen, $fmt, $separator ) = @_;
+        return if !$rawstr;
+        $separator = '' if !defined $separator;
+        if ( length($rawstr) == $strlen ) {
+            my @parts = unpack( "($fmt)*", $rawstr );
+            if (wantarray) {
+                return @parts;
+            }
+            else {
+                return join( "$separator", @parts );
+            }
+        }
+        else {
+            carp 'Supplied string has length '
+                . length($rawstr)
+                . " (expected length: $strlen)";
+            return;
+        }
+    }
 
-	sub encode_mac {
+    sub encode_mac {
 
-		# Encode a mac address to a 6-byte string
-		# $mac		- MAC address in format xx:xx:xx:xx:xx:xx
-		#             or xxxxxxxxxxxx
-		my $mac = shift;
-		$mac =~ s/[:\s]//xmsg;    # remove any colons or whitespace
+        # Encode a mac address to a 6-byte string
+        # $mac		- MAC address in format xx:xx:xx:xx:xx:xx
+        #             or xxxxxxxxxxxx
+        my $mac = shift;
 
-		# $mac should now hold exactly 12 hex digits
-		if ($mac =~ m{
-				\A              # start of string
-				[0-9A-Fa-f]{12} # match two hex digits
-				\z				# end of string
+        # $mac should now hold exactly 12 hex digits
+        if ($mac =~ m{
+                   ( [0-9A-Fa-f]{2} )  # match and capture two hex digits
+                   :                   # semi-colon literal
+                   ( [0-9A-Fa-f]{2} )  # match and capture two hex digits
+                   :                   # semi-colon literal
+                   ( [0-9A-Fa-f]{2} )  # match and capture two hex digits
+                   :                   # semi-colon literal
+                   ( [0-9A-Fa-f]{2} )  # match and capture two hex digits
+                   :                   # semi-colon literal
+                   ( [0-9A-Fa-f]{2} )  # match and capture two hex digits
+                   :                   # semi-colon literal
+                   ( [0-9A-Fa-f]{2} )  # match and capture two hex digits
 			}xms
-			)
-		{
-			return pack( 'H*', $mac );
-		}
-		else {
-			carp
-				"MAC address \"$mac\" not in expected format (xx:xx:xx:xx:xx:xx or xxxxxxxxxxxx)";
-			return;
-		}
-	}
+            )
+        {
+            return pack( 'C6',
+                hex($1), hex($2), hex($3), hex($4), hex($5), hex($6) );
+        }
+        else {
+            carp
+                "MAC address \"$mac\" not in expected format (xx:xx:xx:xx:xx:xx)";
+            return;
+        }
+    }
 
-	sub decode_mac {
+    sub decode_mac {
 
-		# Decode a 6-byte MAC string into human-readable form
-		# $rawstr	- 6-byte hex string representing MAC address
-		my $rawstr = shift;
-		return if !$rawstr;
-		return decode_hex( $rawstr, 6, 'H2', ':' );
-	}
+        # Decode a 6-byte MAC string into human-readable form
+        # $rawstr	- 6-byte hex string representing MAC address
+        my $rawstr = shift || return;
+        return decode_hex( $rawstr, 6, 'H2', ':' );
+    }
 
-	sub hexstr {
+    sub hexstr {
 
-		# decode the supplied bytes as a hex number string
-		# $bytes	- the byte string to decode
-		# $width	- the width of the output
-		# sample output (width=4): 0x0001
-		my ( $bytes, $width ) = @_;
-		return sprintf(
-			join( q{}, '0x%0', int($width), 'x' ),
-			unpack( 'n', $bytes )
-		);
-	}
+        # decode the supplied bytes as a hex number string
+        # $bytes	- the byte string to decode
+        # $width	- the width of the output
+        # sample output (width=4): 0x0001
+        my ( $bytes, $width ) = @_;
+        return sprintf(
+            join( q{}, '0x%0', int($width), 'x' ),
+            unpack( 'n', $bytes )
+        );
+    }
 
-	sub create_socket {
+    sub create_socket {
 
-		# Setup listening socket on UDAP port
-		my $sock = IO::Socket::INET->new(
-			Proto     => 'udp',
-			LocalPort => PORT_UDAP,
+        # Setup listening socket on UDAP port
+        my $sock = IO::Socket::INET->new(
+            Proto     => 'udp',
+            LocalPort => PORT_UDAP,
 
-			# Setting Blocking like this doesn't work on Windows. bah.
-			#            Blocking  => 0,
-			Broadcast => 1,
-		);
-		if ( !defined $sock ) {
-			croak "error creating socket: $@";
-		}
+            # Setting Blocking like this doesn't work on Windows. bah.
+            #            Blocking  => 0,
+            Broadcast => 1,
+        );
+        if ( !defined $sock ) {
+            croak "error creating socket: $@";
+        }
 
-		# Now set socket non-blocking in a way that works on Windows
-		if ( !set_blocking( $sock, 0 ) ) {
-			croak "error setting socket non-blocking";
-		}
-		return $sock;
-	}
+        # Now set socket non-blocking in a way that works on Windows
+        if ( !set_blocking( $sock, 0 ) ) {
+            croak "error setting socket non-blocking";
+        }
+        return $sock;
+    }
 
-	sub get_local_addresses {
+    sub get_local_addresses {
 
-		# This is a dirty hack to get IP addresses in use on the system
-		my @ips = qw( );
-		my $syscmd;
-		my $regex;
+        # This is a dirty hack to get IP addresses in use on the system
+        my @ips = qw( );
+        my $syscmd;
+        my $regex;
 
-		# Use ipconfig on Windows + under cygwin
-		if ( $^O =~ /Win|cygwin/ ) {
-			$syscmd = 'ipconfig';
-			$regex  = qr{IP Address.* ((?:\d{1,3}\.){3}\d{1,3})};
-		}
-		else {
-			$syscmd = '/sbin/ifconfig';
-			$regex  = qr{inet addr:((?:\d{1,3}\.){3}\d{1,3})};
-		}
-		my @output = qx/$syscmd/;
-		for my $line (@output) {
-			if ( $line =~ /$regex/ ) {
-				my $ip = $1;
-				if ( $ip ne '127.0.0.1' ) {
-					push @ips, $ip;
-				}
-			}
-		}
-		return @ips;
-	}
+        # Use ipconfig on Windows + under cygwin
+        if ( $^O =~ /Win|cygwin/ ) {
+            $syscmd = 'ipconfig';
+            $regex  = qr{IP Address.* ((?:\d{1,3}\.){3}\d{1,3})};
+        }
+        elsif ( $^O =~ /solaris/ ) {
+            $syscmd = '/usr/sbin/ifconfig -a4';
+            $regex  = qr{^\s+inet ((?:\d{1,3}\.){3}\d{1,3})};
+        }
+        else {
+            $syscmd = '/sbin/ifconfig';
+            $regex  = qr{inet addr:((?:\d{1,3}\.){3}\d{1,3})};
+        }
+        my @output = qx/$syscmd/;
+        
+        my %ips;
+        for my $line (@output) {
+            if ( $line =~ /$regex/ ) {
+                my $ip = $1;
 
-	sub detect_local_ip {
+                # ignore loopback and zero addresses
+                $ips{$ip} = inet_aton($ip)
+                    unless grep {/$ip/} qw{'127.0.0.1' '0.0.0.0'};
+            }
+        }
+        return \%ips;
+    }
 
-		# This routine adapted from code used in SqueezeCenter
-		#
-		# Thanks to trick from Bill Fenner, trying to use a UDP socket won't
-		# send any packets out over the network, but will cause the routing
-		# table to do a lookup, so we can find our address. Don't use a high
-		# level abstraction like IO::Socket, as it dies when connect() fails.
-		#
-		# time.nist.gov - though it doesn't really matter.
-		my $raddr = '192.43.244.18';
-		my $rport = 123;
+    sub detect_local_ip {
 
-		my $proto     = ( getprotobyname('udp') )[2];
-		my $pname     = ( getprotobynumber($proto) )[0];
-		my $sock      = Symbol::gensym();
-		my $localhost = INADDR_LOOPBACK;
+        # This routine adapted from code used in SqueezeCenter
+        #
+        # Thanks to trick from Bill Fenner, trying to use a UDP socket won't
+        # send any packets out over the network, but will cause the routing
+        # table to do a lookup, so we can find our address. Don't use a high
+        # level abstraction like IO::Socket, as it dies when connect() fails.
+        #
+        # time.nist.gov - though it doesn't really matter.
+        my $raddr = '192.43.244.18';
+        my $rport = 123;
 
-		my $iaddr = inet_aton($raddr) or do {
-			log( warn =>
-					"    Couldn't call inet_aton($raddr) - falling back to $localhost"
-			);
-			return $localhost;
-		};
+        my $proto     = ( getprotobyname('udp') )[2];
+        my $pname     = ( getprotobynumber($proto) )[0];
+        my $sock      = Symbol::gensym();
+        my $localhost = INADDR_LOOPBACK;
 
-		my $paddr = sockaddr_in( $rport, $iaddr );
+        my $iaddr = inet_aton($raddr) or do {
+            log( warn =>
+                    "    Couldn't call inet_aton($raddr) - falling back to $localhost"
+            );
+            return $localhost;
+        };
 
-		socket( $sock, PF_INET, SOCK_DGRAM, $proto ) || do {
-			log( warn =>
-					"    Couldn't call socket(PF_INET, SOCK_DGRAM, \$proto) - falling back to $localhost"
-			);
-			return $localhost;
-		};
+        my $paddr = sockaddr_in( $rport, $iaddr );
 
-		connect( $sock, $paddr ) || do {
-			log( warn =>
-					"    Couldn't call connect() - falling back to $localhost"
-			);
-			return $localhost;
-		};
+        socket( $sock, PF_INET, SOCK_DGRAM, $proto ) || do {
+            log( warn =>
+                    "    Couldn't call socket(PF_INET, SOCK_DGRAM, \$proto) - falling back to $localhost"
+            );
+            return $localhost;
+        };
 
-		# Find my half of the connection
-		my ( $port, $address ) = sockaddr_in( ( getsockname($sock) )[0] );
-		return $address;
-	}
+        connect( $sock, $paddr ) || do {
+            log( warn =>
+                    "    Couldn't call connect() - falling back to $localhost"
+            );
+            return $localhost;
+        };
+
+        # Find my half of the connection
+        my ( $port, $address ) = sockaddr_in( ( getsockname($sock) )[0] );
+        return $address;
+    }
 
 =head2 set_blocking( $sock, [0 | 1] )
 
@@ -217,25 +235,25 @@ Set the passed socket to be blocking (1) or non-blocking (0)
 
 =cut
 
-	sub set_blocking {
+    sub set_blocking {
 
-		my ( $sock, $block_val ) = @_;
+        my ( $sock, $block_val ) = @_;
 
-		# Can just set blocking status on systems other than Windows
-		return $sock->blocking($block_val) unless $^O =~ /Win32/;
+        # Can just set blocking status on systems other than Windows
+        return $sock->blocking($block_val) unless $^O =~ /Win32/;
 
-		# $nonblocking is the opposite of $block_val!
-		my $nonblocking = $block_val ? "0" : "1";
-		my $retval = ioctl( $sock, 0x8004667e, \$nonblocking );
+        # $nonblocking is the opposite of $block_val!
+        my $nonblocking = $block_val ? "0" : "1";
+        my $retval = ioctl( $sock, 0x8004667e, \$nonblocking );
 
-		# presumably, this is because ioctl returns undef for true
-		# in perl 5.8 and lateR?
-		if ( !defined($retval) && $] >= 5.008 ) {
-			$retval = "0 but true";
-		}
+        # presumably, this is because ioctl returns undef for true
+        # in perl 5.8 and lateR?
+        if ( !defined($retval) && $] >= 5.008 ) {
+            $retval = "0 but true";
+        }
 
-		return $retval;
-	}
+        return $retval;
+    }
 
 }
 1;    # Magic true value required at end of module

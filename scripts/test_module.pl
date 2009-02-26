@@ -48,13 +48,13 @@ my $udap = Net::UDAP->new;
 $udap->discover( { advanced => 1 } );
 
 # Get the hash of discovered devices
-my $discovered_devices_ref = $udap->get_device_list;
+my $discovered_devices_ref = $udap->device_list;
 
 if ($discovered_devices_ref) {
 
 	foreach my $device ( values %{$discovered_devices_ref} ) {
 		$udap->set_ip(
-			{   mac => $device->get_mac,
+			{   mac => $device->mac,
 
 				#                data_to_set => {
 				#                    ip      => '172.29.28.27',
@@ -64,10 +64,10 @@ if ($discovered_devices_ref) {
 			}
 		) if 0;
 
-		$udap->get_ip( { mac => $device->get_mac } ) if 0;
+		$udap->get_ip( { mac => $device->mac } ) if 0;
 
 		$udap->get_data(
-			{   mac         => $device->get_mac,
+			{   mac         => $device->mac,
 				data_to_get => [
 					qw(
 						lan_ip_mode
@@ -101,7 +101,7 @@ if ($discovered_devices_ref) {
 			}
 		) if 0;
 		$udap->set_data(
-			{   mac         => $device->get_mac,
+			{   mac         => $device->mac,
 				data_to_set => {
 					wireless_wireless_mode => WLAN_MODE_INFRASTRUCTURE,
 					wireless_wep_on        => WLAN_WEP_ON,

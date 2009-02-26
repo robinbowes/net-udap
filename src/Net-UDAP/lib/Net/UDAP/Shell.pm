@@ -20,9 +20,12 @@ package Net::UDAP::Shell;
 use strict;
 use warnings;
 
+# Add the modules to the libpath
+use FindBin;
+use lib "$FindBin::Bin/../src/Net-UDAP/lib";
+
 use version; our $VERSION = qv('1.0_01');
 
-#use Getopt::Long;
 use Data::Dumper;
 use Data::HexDump;
 use File::Spec::Functions;
@@ -39,7 +42,6 @@ my %fields_default = (
 	history_filename => catfile( $ENV{HOME}, '.UDAP_history' ),
 );
 
-__PACKAGE__->follow_best_practice;
 __PACKAGE__->mk_accessors( keys %fields_default );
 
 use Scalar::Util qw{ looks_like_number };
@@ -62,19 +64,17 @@ sub init {
 	$self->SUPER::init(@_);
 
 	my %args = @{ $self->{API}{args} };
-	$self->set_log( $args{log} ) unless defined $self->get_log;
+	$self->log( $args{log} ) unless defined $self->log;
 
 	while ( my ( $key, $value ) = each %fields_default ) {
-		my $set_key = "set_$key";
-		my $get_key = "get_$key";
-		$self->$set_key($value) unless defined $self->$get_key;
+		$self->$key($value) unless defined $self->$key;
 	}
 
 	# Only now can we try to read the history file, because the
 	# 'history_filename' might have been defined in the DEFAULTS().
 
 	if ( $self->{term}->Features->{setHistory} ) {
-		my $filename = $self->get_history_filename;
+		my $filename = $self->history_filename;
 		if ( -r $filename ) {
 			open( my $fh, '<', $filename )
 				or die "can't open history file $filename: $!\n";
@@ -102,7 +102,7 @@ sub postloop {
 	print "\n";
 
 	if ( $self->{term}->Features->{getHistory} ) {
-		my $filename = $self->get_history_filename;
+		my $filename = $self->history_filename;
 		open( my $fh, '>', $filename )
 			or die "can't open history file $filename for writing: $!\n";
 		print $fh "$_\n" for grep {length} $self->{term}->GetHistory;
@@ -150,7 +150,7 @@ END
 sub run_discover {
 	my $self = shift;
 	$udap->discover( { advanced => 1 } );
-	@device_list = $udap->get_device_list;
+	@device_list = $udap->device_list;
 	foreach my $device (@device_list) {
 		$device->load($udap);
 	}
@@ -198,8 +198,7 @@ sub run_set {
 			return;
 		}
 		if ( exists $field_default_from_name->{$param} ) {
-			my $set_sub = "set_$param";
-			$device_list[$current_device]->$set_sub($value);
+			$device_list[$current_device]->$param($value);
 		}
 		else {
 			print "Invalid parameter: $param\n";
@@ -482,8 +481,8 @@ sub show_devices {
 	printf $list_format, '=' x 2, '=' x 17, '=' x 10, '=' x 15;
 	foreach my $device (@device_list) {
 		if ( ref($device) eq 'Net::UDAP::Client' ) {
-			printf $list_format, $count, $device->get_mac,
-				$device->get_device_type, $device->get_device_status;
+			printf $list_format, $count, $device->mac,
+				$device->device_type, $device->device_status;
 			$count++;
 		}
 	}
@@ -495,7 +494,7 @@ sub list_device {
 	# If the user supplied any parameters, validate them and use them
 	if ( defined $param_names ) {
 
-		# Ceck for invalid field names
+		# Check for invalid field names
 		my @invalid_field_names;
 		foreach my $fieldname ( @{$param_names} ) {
 			push( @invalid_field_names, $fieldname )
@@ -514,7 +513,7 @@ sub list_device {
 	}
 
 	# Get a hash just those params that are not 'undef'
-	my $defined_fields = $device->get_defined_fields;
+	my $defined_fields = $device->defined_fields;
 
 	# Select only those params that are both defined and requested
 	# also, use a hash slice to get the keys in sorted order
