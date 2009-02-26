@@ -285,7 +285,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my $handler = $METHOD{$method}
             || croak('ucp_method invalid or not defined.');
 
-        my $mac = decode_mac( $msg_ref->src_mac );
+        my $mac = decode_mac( $msg_ref->src_mac ) if $msg_ref->src_mac;
         return if !$mac;
         log( info =>
                 "  $ucp_method_name->{$method} response received from $mac\n"
@@ -322,7 +322,6 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my ( $self, $msg_ref ) = @_;
         log( debug => '    processing get_data packet' );
         return ( $self->update_client($msg_ref) );
-        return;
     }
 
     sub callback_set_data {
