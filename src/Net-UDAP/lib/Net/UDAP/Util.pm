@@ -29,7 +29,7 @@ use Exporter qw(import);
 
 %EXPORT_TAGS = (
     all => [
-        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip set_blocking get_local_addresses)
+        qw( hexstr decode_hex str2hex encode_mac decode_mac create_socket detect_local_ip set_blocking get_local_addresses)
     ]
 );
 Exporter::export_tags('all');
@@ -66,6 +66,15 @@ use Socket;
                 . " (expected length: $strlen)";
             return;
         }
+    }
+    
+    sub str2hex {
+        my $data = shift;
+        my $hex;
+        foreach (split (//,$data)){
+            $hex .= sprintf('%02X ', ord($_));
+        }
+        return $hex;
     }
 
     sub encode_mac {

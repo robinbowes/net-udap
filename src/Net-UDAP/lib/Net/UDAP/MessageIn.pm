@@ -264,7 +264,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
                         = unpack( 'n', substr( $raw_msg, $os, 2 ) );
                     $os += 2;
 
-                    log( debug => "    data length: $data_length\n" );
+                    log( debug => "     data length: $data_length\n" );
 
                     #get string
                     my $data_string = unpack( "a*",
@@ -275,7 +275,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
 #    print "squeezecenter_name data string in MessageIn::udap_decode", HexDump($data_string);
 #};
 
-                    log( debug => "    data string: $data_string\n" );
+                    log( debug => '     data string: ' . str2hex($data_string) . "\n" );
 
                     $param_data_ref
                         ->{ $field_name_from_offset->{$param_offset} }
