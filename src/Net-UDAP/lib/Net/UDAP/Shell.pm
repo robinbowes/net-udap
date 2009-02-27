@@ -23,7 +23,6 @@ use warnings;
 use version; our $VERSION = qv('1.0_01');
 
 use Data::Dumper;
-use Data::HexDump;
 use File::Spec::Functions;
 
 use base qw(
@@ -522,11 +521,8 @@ sub list_device {
     @keys_to_print = sort @keys_to_print;
     $self->print_pairs( [@keys_to_print],
         [ @{$defined_fields}{@keys_to_print} ] );
-
-    #   foreach my $param (@keys_to_print) {
-    #       print "HexDump of $param:\n" . HexDump($defined_params->{$param})
-    #   }
 }
+
 1;    # Magic true value required at end of module
 __END__
 

@@ -27,7 +27,6 @@ use base qw(Class::Accessor);
 
 use Carp;
 use Data::Dumper;
-use Data::HexDump;
 use Net::UDAP::Constant;
 use Net::UDAP::Util;
 use Net::UDAP::Log;
@@ -114,7 +113,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
             croak('raw msg not set');
         };
 
-        # print "\$raw_msg in MessageIn::udap_decode\n" . HexDump($raw_msg);
+        # print "\$raw_msg in MessageIn::udap_decode\n" . hex2str($raw_msg);
 
         # Initialise offset from start of raw string
         # This is incremented as we read characters from the string
@@ -272,7 +271,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
                     $os += $data_length;
 
 #if ($field_name_from_offset->{$param_offset} eq 'squeezecenter_name') {
-#    print "squeezecenter_name data string in MessageIn::udap_decode", HexDump($data_string);
+#    print "squeezecenter_name data string in MessageIn::udap_decode", hex2str($data_string);
 #};
 
                     log( debug => '     data string: ' . str2hex($data_string) . "\n" );
@@ -297,7 +296,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
                 carp(     'ucp_method '
                         . $ucp_method_name->{ $self->ucp_method }
                         . ' callback not implemented yet' );
-                print "Raw msg:\n" . HexDump($raw_msg);
+                print "Raw msg:\n" . hex2str($raw_msg);
             }
             else {
                 croak( 'Unknown ucp_method value found: '

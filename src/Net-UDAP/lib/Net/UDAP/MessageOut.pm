@@ -27,7 +27,6 @@ use base qw(Class::Accessor);
 
 use Carp;
 use Data::Dumper;
-use Data::HexDump;
 use Net::UDAP::Constant;
 use Net::UDAP::Log;
 use Net::UDAP::Util;
@@ -263,7 +262,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             return;
         }
 
-        # print "packed msg in MessageOut.packed:\n" . HexDump( $str);
+        # print "packed msg in MessageOut.packed:\n" . hex2str( $str);
         return $str;
     }
 }

@@ -27,7 +27,6 @@ use base qw(Class::Accessor);
 
 use Carp;
 use Data::Dumper;
-use Data::HexDump;
 use IO::Select;
 use IO::Socket::INET;
 use Net::UDAP::Client;
