@@ -29,8 +29,12 @@ use version; our $VERSION = qv('1.0_01');
 use Carp;
 use Data::Dumper;
 use Net::UDAP::Shell;
+use Net::UDAP::Log;
 
 $| = 1;
+
+# set minimum log level - default is "info"
+set_min_log_level('error');
 
 my $shell = Net::UDAP::Shell->new;
 $shell->cmdloop;
