@@ -243,6 +243,9 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
                 # get number of data items
                 my $num_items = unpack( 'n', substr( $raw_msg, $os, 2 ) );
+
+                last SWITCH if !$num_items;
+
                 $os += 2;
 
                 log( debug => "    num_items: $num_items\n" );
@@ -274,12 +277,12 @@ __PACKAGE__->mk_accessors( keys %field_default );
 #    print "squeezecenter_name data string in MessageIn::udap_decode", hex2str($data_string);
 #};
 
-                    log( debug => '     data string: ' . str2hex($data_string) . "\n" );
+                    log( debug => '     data string: ' . str2hex($data_string) . "\n" ) if $data_string;
 
                     $param_data_ref
                         ->{ $field_name_from_offset->{$param_offset} }
                         = $field_unpack_from_offset->{$param_offset}
-                        ->($data_string);
+                        ->($data_string) if $param_offset;
                 }
                 $self->update_device_data($param_data_ref);
                 last SWITCH;
