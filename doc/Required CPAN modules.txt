@@ -1,4 +1,5 @@
 Class::Accessor
+IO::Interface::Simple
 Log::StdLog
 Term::Shell
 version

@@ -132,24 +132,22 @@ use Socket;
     }
 
     sub create_socket {
+        my $local_ip = shift || croak "must supply local_ip";
 
         # Setup listening socket on UDAP port
         my $sock = IO::Socket::INET->new(
             Proto     => 'udp',
-            LocalPort => PORT_UDAP,
 
             # Setting Blocking like this doesn't work on Windows. bah.
             #            Blocking  => 0,
-            Broadcast => 1,
-        );
-        if ( !defined $sock ) {
-            croak "error creating socket: $@";
-        }
+            Broadcast => BROADCAST_ON,
+        ) or croak "Error creating socket: $!";
+        $sock->sockopt(SO_REUSEADDR, 1) or croak "Error setting SO_REUSEADDR: $!";
+        $sock->bind( PORT_UDAP, inet_aton($local_ip) ) or croak "Error binding: $!";
 
         # Now set socket non-blocking in a way that works on Windows
-        if ( !set_blocking( $sock, 0 ) ) {
-            croak "error setting socket non-blocking";
-        }
+        set_blocking( $sock, 0 ) or croak "error setting socket non-blocking: $!";
+
         return $sock;
     }
 
