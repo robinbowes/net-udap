@@ -204,7 +204,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
             carp($@);
             return;
             };
-        log( debug => str2hex( $msg_ref->packed ));
+        log( debug => format_hex( $msg_ref->packed ));
         foreach my $interface (@{$self->interfaces}) {
             log( debug => "sending on interface $interface");
             my $dest    = pack_sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
