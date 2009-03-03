@@ -145,11 +145,11 @@ __PACKAGE__->mk_accessors( keys %field_default );
         }
         $os += 6;
 
-        # set src_broadcast
+        # get src_broadcast
         $self->src_broadcast( substr( $raw_msg, $os, 1 ) );
         $os += 1;
 
-        # set src addr type
+        # get src addr type
         $self->src_addr_type( substr( $raw_msg, $os, 1 ) );
         $os += 1;
 
@@ -222,6 +222,8 @@ __PACKAGE__->mk_accessors( keys %field_default );
                         ? substr( $raw_msg, $os, $data_length )
                         : '';
                     $os += $data_length;
+                    
+                    log( debug => '*** ucp_code_name: ' . $ucp_code_name->{$ucp_code} . ', data string: ' . format_hex($data) . "\n" ) if $data;
 
                     # add to the data hash
                     if ( exists $ucp_code_name->{$ucp_code} ) {
@@ -277,7 +279,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
 #    print "squeezecenter_name data string in MessageIn::udap_decode", hex2str($data_string);
 #};
 
-                    log( debug => '     data string: ' . format_hex($data_string) . "\n" ) if $data_string;
+                    log( debug => '*** field name: ' . $field_name_from_offset->{$param_offset} . ', data string: ' . format_hex($data_string) . "\n" ) if $data_string;
 
                     $param_data_ref
                         ->{ $field_name_from_offset->{$param_offset} }
