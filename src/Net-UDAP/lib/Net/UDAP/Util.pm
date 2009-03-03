@@ -29,7 +29,7 @@ use Exporter qw(import);
 
 %EXPORT_TAGS = (
     all => [
-        qw( decode_hex format_hex encode_mac decode_mac create_socket detect_local_ip set_blocking get_local_addresses)
+        qw( decode_hex format_hex encode_mac decode_mac create_socket set_blocking )
     ]
 );
 Exporter::export_tags('all');
@@ -40,14 +40,13 @@ use IO::Socket::INET;
 use Socket;
 
 {
-
     sub decode_hex {
 
-# Decode a hex string of specified length into a human-readable string
-# $rawstr	- the raw hex string
-# $strlen	- the length of the hex string
-# $fmt		- the format to use to unpack each byte
-# $separator	- the string to use as separator in the output string
+        # Decode a hex string of specified length into a human-readable string
+        # $rawstr	- the raw hex string
+        # $strlen	- the length of the hex string
+        # $fmt		- the format to use to unpack each byte
+        # $separator	- the string to use as separator in the output string
         my ( $rawstr, $strlen, $fmt, $separator ) = @_;
         return if !$rawstr;
         $separator = '' if !defined $separator;
@@ -67,12 +66,12 @@ use Socket;
             return;
         }
     }
-    
+
     sub format_hex {
         my $data = shift;
         my $hex;
-        foreach (split (//,$data)){
-            $hex .= sprintf('%02X ', ord($_));
+        foreach ( split( //, $data ) ) {
+            $hex .= sprintf( '%02X ', ord($_) );
         }
         return $hex;
     }
@@ -120,7 +119,7 @@ use Socket;
 
     sub create_socket {
         my $local_ip = shift || croak "must supply local_ip";
-        
+
         # Setup listening socket on UDAP port
         my $sock = IO::Socket::INET->new(
             Proto     => 'udp',
@@ -128,95 +127,16 @@ use Socket;
             LocalPort => PORT_UDAP,
             Broadcast => 1,
             ReuseAddr => 1,
+
             # Setting Blocking like this doesn't work on Windows. bah.
             #Blocking  => 0,
         ) or croak "Error creating socket: $!";
 
         # Now set socket non-blocking in a way that works on Windows
-        set_blocking( $sock, 0 ) or croak "error setting socket non-blocking: $!";
+        set_blocking( $sock, 0 )
+            or croak "error setting socket non-blocking: $!";
 
         return $sock;
-    }
-
-    sub get_local_addresses {
-
-        # This is a dirty hack to get IP addresses in use on the system
-        my @ips = qw( );
-        my $syscmd;
-        my $regex;
-
-        # Use ipconfig on Windows + under cygwin
-        if ( $^O =~ /Win|cygwin/ ) {
-            $syscmd = 'ipconfig';
-            $regex  = qr{IP Address.* ((?:\d{1,3}\.){3}\d{1,3})};
-        }
-        elsif ( $^O =~ /solaris/ ) {
-            $syscmd = '/usr/sbin/ifconfig -a4';
-            $regex  = qr{^\s+inet ((?:\d{1,3}\.){3}\d{1,3})};
-        }
-        else {
-            $syscmd = '/sbin/ifconfig';
-            $regex  = qr{inet addr:((?:\d{1,3}\.){3}\d{1,3})};
-        }
-        my @output = qx/$syscmd/;
-
-        my %ips;
-        for my $line (@output) {
-            if ( $line =~ /$regex/ ) {
-                my $ip = $1;
-
-                # ignore loopback and zero addresses
-                $ips{$ip} = inet_aton($ip)
-                    unless grep {/$ip/} qw{'127.0.0.1' '0.0.0.0'};
-            }
-        }
-        return \%ips;
-    }
-
-    sub detect_local_ip {
-
-        # This routine adapted from code used in SqueezeCenter
-        #
-        # Thanks to trick from Bill Fenner, trying to use a UDP socket won't
-        # send any packets out over the network, but will cause the routing
-        # table to do a lookup, so we can find our address. Don't use a high
-        # level abstraction like IO::Socket, as it dies when connect() fails.
-        #
-        # time.nist.gov - though it doesn't really matter.
-        my $raddr = '192.43.244.18';
-        my $rport = 123;
-
-        my $proto     = ( getprotobyname('udp') )[2];
-        my $pname     = ( getprotobynumber($proto) )[0];
-        my $sock      = Symbol::gensym();
-        my $localhost = INADDR_LOOPBACK;
-
-        my $iaddr = inet_aton($raddr) or do {
-            log( warn =>
-                    "    Couldn't call inet_aton($raddr) - falling back to $localhost"
-            );
-            return $localhost;
-        };
-
-        my $paddr = sockaddr_in( $rport, $iaddr );
-
-        socket( $sock, PF_INET, SOCK_DGRAM, $proto ) || do {
-            log( warn =>
-                    "    Couldn't call socket(PF_INET, SOCK_DGRAM, \$proto) - falling back to $localhost"
-            );
-            return $localhost;
-        };
-
-        connect( $sock, $paddr ) || do {
-            log( warn =>
-                    "    Couldn't call connect() - falling back to $localhost"
-            );
-            return $localhost;
-        };
-
-        # Find my half of the connection
-        my ( $port, $address ) = sockaddr_in( ( getsockname($sock) )[0] );
-        return $address;
     }
 
 =head2 set_blocking( $sock, [0 | 1] )
