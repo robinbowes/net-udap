@@ -39,11 +39,11 @@ use Net::UDAP::Util;
 use Time::HiRes;
 
 my %field_default = (
-    sockets     => {},    # sockets used for sending
-    socket_in   => undef, # socket used for listening
-    device_hash => {},    # store devices in a hash ref
-    local_ips   => {},    # hash ref of local IPs
-    interfaces  => [],    # array ref of interfaces
+    sockets     => {},       # sockets used for sending
+    socket_in   => undef,    # socket used for listening
+    device_hash => {},       # store devices in a hash ref
+    local_ips   => {},       # hash ref of local IPs
+    interfaces  => [],       # array ref of interfaces
 );
 
 __PACKAGE__->mk_accessors( keys %field_default );
@@ -61,14 +61,18 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my $self = bless {%arg}, $class;
 
         # create socket to listen for responses on all addresses
-        $self->socket_in(create_socket( inet_ntoa(INADDR_ANY) ));
-        
+        $self->socket_in( create_socket( inet_ntoa(INADDR_ANY) ) );
+
         foreach my $interface ( IO::Interface::Simple->interfaces ) {
-            next unless $interface->is_broadcast;
-            next if $interface->address eq '0.0.0.0';
-            push @{$self->interfaces}, $interface;
-            $self->local_ips->{$interface->address} = 1;
-            $self->sockets->{$interface} = create_socket( $interface->address );
+            next
+                unless ( $interface->is_running
+                && $interface->is_broadcast
+                && $interface->address
+                && ( $interface->address ne '0.0.0.0' ) );
+            push @{ $self->interfaces }, $interface;
+            $self->local_ips->{ $interface->address } = 1;
+            $self->sockets->{$interface}
+                = create_socket( $interface->address );
         }
 
         return $self;
@@ -76,7 +80,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
     sub close {
         my $self = shift;
-        foreach my $socket (keys %{$self->sockets}) {
+        foreach my $socket ( keys %{ $self->sockets } ) {
             $socket->close;
         }
     }
@@ -204,15 +208,16 @@ __PACKAGE__->mk_accessors( keys %field_default );
             carp($@);
             return;
             };
-        log( debug => format_hex( $msg_ref->packed ));
-        foreach my $interface (@{$self->interfaces}) {
-            log( debug => "sending on interface $interface");
-            my $dest    = pack_sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
+        log( debug => format_hex( $msg_ref->packed ) );
+        foreach my $interface ( @{ $self->interfaces } ) {
+            log( debug => "sending on interface $interface" );
+            my $dest = pack_sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
             log(      info => '*** Broadcasting '
                     . $ucp_method_name->{$ucp_method}
                     . ' message to MAC address '
-                    . decode_mac($encoded_mac)
-                    . ' on ' . inet_ntoa(INADDR_BROADCAST) . "\n" );
+                    . decode_mac($encoded_mac) . ' on '
+                    . inet_ntoa(INADDR_BROADCAST)
+                    . "\n" );
             $self->sockets->{$interface}->send( $msg_ref->packed, 0, $dest );
         }
         return 1;
