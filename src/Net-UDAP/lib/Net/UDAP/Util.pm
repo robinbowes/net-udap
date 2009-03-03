@@ -29,7 +29,7 @@ use Exporter qw(import);
 
 %EXPORT_TAGS = (
     all => [
-        qw( hexstr decode_hex format_hex encode_mac decode_mac create_socket detect_local_ip set_blocking get_local_addresses)
+        qw( decode_hex format_hex encode_mac decode_mac create_socket detect_local_ip set_blocking get_local_addresses)
     ]
 );
 Exporter::export_tags('all');
@@ -116,19 +116,6 @@ use Socket;
         # $rawstr	- 6-byte hex string representing MAC address
         my $rawstr = shift || return;
         return decode_hex( $rawstr, 6, 'H2', ':' );
-    }
-
-    sub hexstr {
-
-        # decode the supplied bytes as a hex number string
-        # $bytes	- the byte string to decode
-        # $width	- the width of the output
-        # sample output (width=4): 0x0001
-        my ( $bytes, $width ) = @_;
-        return sprintf(
-            join( q{}, '0x%0', int($width), 'x' ),
-            unpack( 'n', $bytes )
-        );
     }
 
     sub create_socket {

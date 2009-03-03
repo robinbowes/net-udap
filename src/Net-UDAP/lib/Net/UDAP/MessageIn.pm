@@ -141,7 +141,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
             # default action if dst address type not recognised
             croak( 'Unknown dst_addr_type value found: '
-                    . hexstr( $self->dst_addr_type, 4 ) );
+                    . format_hex( $self->dst_addr_type ) );
         }
         $os += 6;
 
@@ -167,7 +167,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
             # default action if src address type not recognised
             croak( 'Unknown src_addr_type value found: '
-                    . hexstr( $self->src_addr_type, 4 ) );
+                    . format_hex( $self->src_addr_type ) );
         }
         $os += 6;
 
@@ -296,14 +296,13 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
             # default action if ucp_method is not recognised goes here
             if ( exists $ucp_method_name->{ $self->ucp_method } ) {
-                carp(     'ucp_method '
-                        . $ucp_method_name->{ $self->ucp_method }
+                log( debug => 'ucp_method ' . $ucp_method_name->{ $self->ucp_method }
                         . ' callback not implemented yet' );
-                print "Raw msg:\n" . hex2str($raw_msg);
+                print "Raw msg:\n" . format_hex($raw_msg);
             }
             else {
                 croak( 'Unknown ucp_method value found: '
-                        . hexstr( $self->ucp_method, 4 ) );
+                        . format_hex( $self->ucp_method ) );
             }
         }
         return $self;
