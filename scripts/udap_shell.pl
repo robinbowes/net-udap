@@ -33,9 +33,6 @@ use Net::UDAP::Log;
 
 $| = 1;
 
-# set minimum log level - default is "info"
-set_min_log_level('error');
-
 my $shell = Net::UDAP::Shell->new;
 $shell->cmdloop;
 
