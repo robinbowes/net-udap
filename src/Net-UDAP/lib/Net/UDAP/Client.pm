@@ -22,13 +22,12 @@ use warnings;
 
 use version; our $VERSION = qv('1.0_01');
 
-use vars qw( $AUTOLOAD );                    # Keep 'use strict' happy
+use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
 use base qw(Class::Accessor);
 
 use Carp;
 use Data::Dumper;
 use Net::UDAP::Constant;
-use Net::UDAP::Log;
 use Net::UDAP::Util;
 
 my %other_codes_default = (
@@ -43,14 +42,8 @@ my %fields_default
     = ( %$field_default_from_name, %$ucp_code_default, %other_codes_default );
 
 __PACKAGE__->mk_accessors( keys(%fields_default) );
-
 {
 
-    # Hash to hold values originally read from the device
-    #my %fields_from_device;
-    #@fields_from_device{ keys %$field_default_from_name } = ();
-
-    # class methods
     sub new {
         my ( $caller, $arg_ref ) = @_;
         my $class = ref $caller || $caller;
@@ -131,21 +124,10 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         return $modified_fields;
     }
 
-    #    sub set {
-    #        my ($self, $key) = splice(@_, 0, 2);
-    #
-    #        # Note every time someone sets some data.
-    #        print STDERR "Setting $key to @_\n";
-    #
-    #        $self->SUPER::set($key, @_);
-    #    }
-
     sub display_name {
-        my $self  = shift;
-        my $dname = $self->device_type . ' ';
-        my @mac   = split( /:/, $self->mac );
-        $dname .= $mac[3] . $mac[4] . $mac[5];
-        return $dname;
+        my $self = shift;
+        join q{}, $self->device_type, q{ },
+            ( split /:/, $self->mac )[ 3 .. 5 ];
     }
 
     sub update {
@@ -177,6 +159,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 }
 
 1;    # Magic true value required at end of module
+
 __END__
 
 =head1 NAME
