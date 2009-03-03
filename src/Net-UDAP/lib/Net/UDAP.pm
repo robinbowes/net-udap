@@ -212,7 +212,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         foreach my $interface ( @{ $self->interfaces } ) {
             log( debug => "sending on interface $interface" );
             my $dest = pack_sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
-            log(      info => '*** Broadcasting '
+            log(      info => '<<< Broadcasting '
                     . $ucp_method_name->{$ucp_method}
                     . ' message to MAC address '
                     . decode_mac($encoded_mac) . ' on '
@@ -306,57 +306,57 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my $mac = decode_mac( $msg_ref->src_mac ) if $msg_ref->src_mac;
         return if !$mac;
         log( info =>
-                "  $ucp_method_name->{$method} response received from $mac\n"
+                ">>> $ucp_method_name->{$method} response received from $mac\n"
         );
         return $handler->( $self, $msg_ref );
     }
 
     sub callback_discover {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '    processing discover packet' );
+        log( debug => '>>> processing discover packet' );
         return $self->add_client($msg_ref);
     }
 
     sub callback_get_ip {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '    processing get_ip packet' );
+        log( debug => '>>> processing get_ip packet' );
         return ( $self->update_client($msg_ref) );
         return;
     }
 
     sub callback_set_ip {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '    processing set_ip packet' );
+        log( debug => '>>> processing set_ip packet' );
         return;
     }
 
     sub callback_reset {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '    processing reset packet' );
+        log( debug => '>>> processing reset packet' );
         return;
     }
 
     sub callback_get_data {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '    processing get_data packet' );
+        log( debug => '>>> processing get_data packet' );
         return ( $self->update_client($msg_ref) );
     }
 
     sub callback_set_data {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '    processing set_data packet' );
+        log( debug => '>>> processing set_data packet' );
         return;
     }
 
     sub callback_error {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '    processing error packet' );
+        log( debug => '>>> processing error packet' );
         return;
     }
 
     sub callback_credentials_error {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '    processing credentials_error packet' );
+        log( debug => '>>> processing credentials_error packet' );
         return;
     }
 
