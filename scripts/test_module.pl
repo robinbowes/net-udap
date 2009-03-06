@@ -24,7 +24,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
-use version; our $VERSION = qv('1.0_01');
+use version; our $VERSION = qv('1.1.0');
 
 use Carp;
 use Data::Dumper;
@@ -43,27 +43,27 @@ $| = 1;
 # Create the socket
 my $udap = Net::UDAP->new;
 
-
 # Send the discovery packet
 
 $udap->discover( { advanced => 1 } );
 
 # Get the hash of discovered devices
-my $discovered_devices_ref = $udap->devices;
+my $discovered_devices_ref = $udap->device_list;
 
 if ($discovered_devices_ref) {
 
     foreach my $device ( values %{$discovered_devices_ref} ) {
         $udap->set_ip(
-            {   mac         => $device->mac,
-#                data_to_set => {
-#                    ip      => '172.29.28.27',
-#                    netmask => '255.255.0.0',
-#                    gateway => '172.28.28.1',
-#                }
+            {   mac => $device->mac,
+
+                #                data_to_set => {
+                #                    ip      => '172.29.28.27',
+                #                    netmask => '255.255.0.0',
+                #                    gateway => '172.28.28.1',
+                #                }
             }
         ) if 0;
-        
+
         $udap->get_ip( { mac => $device->mac } ) if 0;
 
         $udap->get_data(

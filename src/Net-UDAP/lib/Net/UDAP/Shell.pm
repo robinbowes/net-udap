@@ -24,17 +24,14 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
-use version; our $VERSION = qv('1.0_01');
+use version; our $VERSION = qv('1.1.0');
 
-#use Getopt::Long;
+use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
+
+use base qw( Term::Shell Class::Accessor );
+
 use Data::Dumper;
-use Data::HexDump;
 use File::Spec::Functions;
-
-use base qw(
-    Term::Shell
-    Class::Accessor
-);
 
 my %fields_default = (
     num              => 0,
@@ -495,7 +492,7 @@ sub list_device {
     # If the user supplied any parameters, validate them and use them
     if ( defined $param_names ) {
 
-        # Ceck for invalid field names
+        # Check for invalid field names
         my @invalid_field_names;
         foreach my $fieldname ( @{$param_names} ) {
             push( @invalid_field_names, $fieldname )
@@ -527,10 +524,6 @@ sub list_device {
     @keys_to_print = sort @keys_to_print;
     $self->print_pairs( [@keys_to_print],
         [ @{$defined_fields}{@keys_to_print} ] );
-
-    #   foreach my $param (@keys_to_print) {
-    #       print "HexDump of $param:\n" . HexDump($defined_params->{$param})
-    #   }
 }
 1;    # Magic true value required at end of module
 __END__

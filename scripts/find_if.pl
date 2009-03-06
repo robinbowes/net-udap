@@ -19,21 +19,20 @@
 
 use strict;
 use warnings;
-use Carp;
-
-use version; our $VERSION = qv('0.1');
-
-use Data::Dumper;
 
 # Add the modules to the libpath
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
+use version; our $VERSION = qv('1.1.0');
+
+use Carp;
+use Data::Dumper;
 use Net::UDAP::Util;
 
 $| = 1;
 
-my $ips = local_addresses;
+my $ips = get_local_addresses;
 print join ',', keys %$ips;
 print "\n";
 

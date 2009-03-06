@@ -24,7 +24,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
-use version; our $VERSION = qv('1.0_01');
+use version; our $VERSION = qv('1.1.0');
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
 
@@ -33,7 +33,7 @@ use Exporter qw(import);
 
 %EXPORT_TAGS = (
     all => [
-        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip blocking local_addresses)
+        qw( decode_hex format_hex encode_mac decode_mac create_socket set_blocking get_local_addresses)
     ]
 );
 Exporter::export_tags('all');
@@ -53,6 +53,7 @@ use Socket;
         # $fmt		- the format to use to unpack each byte
         # $separator	- the string to use as separator in the output string
         my ( $rawstr, $strlen, $fmt, $separator ) = @_;
+        return if !$rawstr;
         $separator = '' if !defined $separator;
         if ( length($rawstr) == $strlen ) {
             my @parts = unpack( "($fmt)*", $rawstr );
@@ -64,32 +65,45 @@ use Socket;
             }
         }
         else {
-            carp 'Supplied string has length'
+            carp 'Supplied string has length '
                 . length($rawstr)
-                . "(expected length: $strlen)";
-            return undef;
+                . " (expected length: $strlen)";
+            return;
         }
+    }
+
+    sub format_hex {
+        my $data = shift;
+        my $hex;
+        foreach ( split( //, $data ) ) {
+            $hex .= sprintf( '%02X ', ord($_) );
+        }
+        return $hex;
     }
 
     sub encode_mac {
 
         # Encode a mac address to a 6-byte string
         # $mac		- MAC address in format xx:xx:xx:xx:xx:xx
+        #             or xxxxxxxxxxxx
         my $mac = shift;
-        if ($mac =~ /
-		    \A			# start of string
+
+        # $mac should now hold exactly 12 hex digits
+        if ($mac =~ m{
+		    \A			        # start of string
 		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    :			# semi-colon literal
+		    :			        # semi-colon literal
 		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    :			# semi-colon literal
+		    :			        # semi-colon literal
 		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    :			# semi-colon literal
+		    :			        # semi-colon literal
 		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    :			# semi-colon literal
+		    :			        # semi-colon literal
 		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    :			# semi-colon literal
+		    :			        # semi-colon literal
 		    ( [0-9A-Fa-f]{2} )	# match and capture two hex digits
-		    /xms
+		    \z                  # end of string
+        }xms
             )
         {
             return pack( 'C6',
@@ -98,7 +112,7 @@ use Socket;
         else {
             carp
                 "MAC address \"$mac\" not in expected format (xx:xx:xx:xx:xx:xx)";
-            return undef;
+            return;
         }
     }
 
@@ -108,19 +122,6 @@ use Socket;
         # $rawstr	- 6-byte hex string representing MAC address
         my $rawstr = shift || return;
         return decode_hex( $rawstr, 6, 'H2', ':' );
-    }
-
-    sub hexstr {
-
-        # decode the supplied bytes as a hex number string
-        # $bytes	- the byte string to decode
-        # $width	- the width of the output
-        # sample output (width=4): 0x0001
-        my ( $bytes, $width ) = @_;
-        return sprintf(
-            join( q{}, '0x%0', int($width), 'x' ),
-            unpack( 'n', $bytes )
-        );
     }
 
     sub create_socket {
@@ -139,13 +140,13 @@ use Socket;
         }
 
         # Now set socket non-blocking in a way that works on Windows
-        if ( !blocking( $sock, 0 ) ) {
+        if ( !set_blocking( $sock, 0 ) ) {
             croak "error setting socket non-blocking";
         }
         return $sock;
     }
 
-    sub local_addresses {
+    sub get_local_addresses {
 
         # This is a dirty hack to get IP addresses in use on the system
         my $syscmd;
@@ -172,7 +173,8 @@ use Socket;
                 my $ip = $1;
 
                 # ignore loopback and zero addresses
-                $ips{$ip} = inet_aton($ip) unless grep {/$ip/} qw{'127.0.0.1' '0.0.0.0'};
+                $ips{$ip} = inet_aton($ip)
+                    unless grep {/$ip/} qw{'127.0.0.1' '0.0.0.0'};
             }
         }
         return \%ips;
@@ -224,13 +226,13 @@ use Socket;
         return $address;
     }
 
-=head2 blocking( $sock, [0 | 1] )
+=head2 set_blocking( $sock, [0 | 1] )
 
 Set the passed socket to be blocking (1) or non-blocking (0)
 
 =cut
 
-    sub blocking {
+    sub set_blocking {
 
         my ( $sock, $block_val ) = @_;
 

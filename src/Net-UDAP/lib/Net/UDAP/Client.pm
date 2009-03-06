@@ -24,9 +24,10 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
-use version; our $VERSION = qv('1.0_01');
+use version; our $VERSION = qv('1.1.0');
 
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
+
 use base qw(Class::Accessor);
 
 use Carp;
@@ -50,11 +51,6 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
 {
 
-    # Hash to hold values originally read from the device
-    #my %fields_from_device;
-    #@fields_from_device{ keys %$field_default_from_name } = ();
-
-    # class methods
     sub new {
         my ( $caller, $arg_ref ) = @_;
         my $class = ref $caller || $caller;
@@ -94,7 +90,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         my ( $self, $udap ) = @_;
         my $device_mac  = $self->mac;
         my $data_to_set = $self->modified_fields;
-        $udap->data( $device_mac,
+        $udap->set_data( $device_mac,
             { data_to_set => $self->modified_fields } );
     }
 
@@ -123,9 +119,8 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         my $self            = shift;
         my $modified_fields = {};
         foreach my $fieldname ( keys %$field_default_from_name ) {
-            my $field = "$fieldname";
-            my $newval    = $self->$field;
-            my $oldval    = $self->fields_from_device->{$fieldname};
+            my $newval = $self->$fieldname;
+            my $oldval = $self->fields_from_device->{$fieldname};
             if (    defined($newval)
                 and defined($oldval)
                 and $newval ne $oldval )
@@ -136,21 +131,10 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         return $modified_fields;
     }
 
-    #    sub set {
-    #        my ($self, $key) = splice(@_, 0, 2);
-    #
-    #        # Note every time someone sets some data.
-    #        print STDERR "Setting $key to @_\n";
-    #
-    #        $self->SUPER::set($key, @_);
-    #    }
-
     sub display_name {
-        my $self  = shift;
-        my $dname = $self->device_type . ' ';
-        my @mac   = split( /:/, $self->mac );
-        $dname .= $mac[3] . $mac[4] . $mac[5];
-        return $dname;
+        my $self = shift;
+        join q{}, $self->device_type, q{ },
+            ( split /:/, $self->mac )[ 3 .. 5 ];
     }
 
     sub update {
@@ -172,9 +156,8 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         my $self           = shift;
         my $defined_fields = {};
         foreach my $fieldname ( keys %fields_default ) {
-            my $field = "$fieldname";
-            if ( defined $self->$field ) {
-                $defined_fields->{$fieldname} = $self->$field;
+            if ( defined $self->$fieldname ) {
+                $defined_fields->{$fieldname} = $self->$fieldname;
             }
         }
         return $defined_fields;

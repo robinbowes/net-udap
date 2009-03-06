@@ -24,13 +24,16 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
-use version; our $VERSION = qv('1.0_01');
+use version; our $VERSION = qv('1.1.0');
 
 use Carp;
 use Data::Dumper;
+use Net::UDAP::Log;
 use Net::UDAP::Shell;
 
 $| = 1;
+
+#set_min_log_level('debug');
 
 my $shell = Net::UDAP::Shell->new;
 $shell->cmdloop;

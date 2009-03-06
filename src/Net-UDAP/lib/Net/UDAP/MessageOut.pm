@@ -24,14 +24,14 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
-use version; our $VERSION = qv('1.0_01');
+use version; our $VERSION = qv('1.1.0');
 
 use vars qw( $AUTOLOAD );    # Keep 'use strict' happy
+
 use base qw(Class::Accessor);
 
 use Carp;
 use Data::Dumper;
-use Data::HexDump;
 use Net::UDAP::Constant;
 use Net::UDAP::Log;
 use Net::UDAP::Util;
@@ -77,7 +77,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
 
         # values from $arg_ref over-write the defaults
         my %arg = ( %fields_default, %{$arg_ref} );
-        
+
         # A method must be specified, i.e. what type of packet is this?
         my $method = $arg{ucp_method};
         (          ( defined($method) )
@@ -224,14 +224,14 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             };
             ( $method eq UCP_METHOD_SET_DATA ) && do {
 
-                # set_data data is in the following format:
+                # set_data method is in the following format:
                 #  - credentials
                 #  - number of items
                 #  - repeating group of:
                 #    ( offset, data_length, data )
                 $str .= $self->credentials;
 
-             # no. of items is count of number of keys in data_to_set hash
+             # no. of items is count of number of keys in get_data_to_set hash
                 my $data = $self->data_to_set;
                 $str .= pack( 'n', scalar( keys %{$data} ) );
                 foreach my $pname ( keys %{$data} ) {
@@ -264,10 +264,10 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
             log(      error => '  msg method '
                     . $ucp_method_name->{$method}
                     . " not implemented\n" );
-            return undef;
+            return;
         }
 
-        # print "packed msg in MessageOut.packed:\n" . HexDump( $str);
+        # print "packed msg in MessageOut.packed:\n" . hex2str( $str);
         return $str;
     }
 }

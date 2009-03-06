@@ -1,5 +1,16 @@
 Revision history for Net-UDAP
 
+1.1.0  Friday Mar 06
+ - fix WEP key - now enter as hex chars
+ - support IP detection on OpenSolaris (prob. Solaris too, but not tested) 
+ - remove Data::HexDump
+ - tidy up error handling
+ - tidy up logging code
+ 
+1.0.0  Sunday Mar 23 08
+ - First "properly" versioned release
+ - basically works OK, but a bit rough round the edges!
+
 0.0.1  Fri Jan 18 11:40:14 2008
        Initial release.
 

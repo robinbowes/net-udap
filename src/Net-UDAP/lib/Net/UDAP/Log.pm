@@ -24,22 +24,31 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../src/Net-UDAP/lib";
 
-use version; our $VERSION = qv('1.0_01');
+use version; our $VERSION = qv('1.1.0');
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
 
 use Exporter qw(import);
 
-%EXPORT_TAGS = ( all => [qw( log )] );
+%EXPORT_TAGS = ( all => [qw( log set_min_log_level)] );
 Exporter::export_tags('all');
+
+our $default_log_level;
+BEGIN { $default_log_level = 'info' }
 
 use Log::StdLog {
     handle => *STDERR,
-    level  => 'info',
+    level  => $default_log_level,
     format => \&std_log_format,
 };
 
+use Carp;
+
 {
+
+    my @levels = qw( all trace debug user info warn error fatal none );
+    my %severity;
+    @severity{@levels} = 1 .. @levels;
 
     sub log {
 
@@ -47,6 +56,18 @@ use Log::StdLog {
         # Also, avoids the need to use the complex use statement in
         # all code requiring logging
         print {*STDLOG} (@_);
+    }
+
+    sub set_min_log_level {
+        my $new_log_level = shift || $default_log_level;
+        if ( !exists $severity{$new_log_level} ) {
+            carp
+                "log level '$new_log_level' not recognised. Setting min log level to '$default_log_level'";
+            $new_log_level = $default_log_level;
+        }
+        my $ref = tied *STDLOG;
+        $ref->{min_severity}      = $severity{$new_log_level};
+        $ref->{min_severity_name} = $new_log_level;
     }
 
     sub std_log_format {
