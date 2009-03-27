@@ -149,6 +149,7 @@ sub run_discover {
     my $self = shift;
     $udap->discover( { advanced => 1 } );
     @device_list = $udap->device_list;
+    $current_device = undef;
     foreach my $device (@device_list) {
         $device->load($udap);
     }
