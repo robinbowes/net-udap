@@ -94,7 +94,7 @@ __PACKAGE__->mk_accessors( keys(%fields_default) );
         my ( $self, $udap ) = @_;
         my $device_mac  = $self->mac;
         my $data_to_set = $self->modified_fields;
-        $udap->data( $device_mac,
+        $udap->set_data( $device_mac,
             { data_to_set => $self->modified_fields } );
     }
 
