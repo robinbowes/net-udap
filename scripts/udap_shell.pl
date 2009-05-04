@@ -33,6 +33,8 @@ use Net::UDAP::Log;
 
 $| = 1;
 
+#set_min_log_level('debug');
+
 my $shell = Net::UDAP::Shell->new;
 $shell->cmdloop;
 

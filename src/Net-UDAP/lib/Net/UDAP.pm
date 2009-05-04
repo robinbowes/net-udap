@@ -65,10 +65,12 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
         foreach my $interface ( IO::Interface::Simple->interfaces ) {
             next
-                unless ( $interface->is_running
-                && $interface->is_broadcast
-                && $interface->address
-                && ( $interface->address ne '0.0.0.0' ) );
+                unless (
+                $interface->is_running                  # is up
+                && $interface->is_broadcast             # supports broadcast
+                && $interface->address                  # has an address
+                && ( $interface->address ne '0.0.0.0' ) # address isn't all zeros
+                );
             push @{ $self->interfaces }, $interface;
             $self->local_ips->{ $interface->address } = 1;
             $self->sockets->{$interface}
@@ -87,8 +89,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
     sub device_list {
         my $self        = shift;
-        my $device_hash = $self->device_hash;
-        return @{$device_hash}{ sort keys %{$device_hash} };
+        return @{$self->device_hash}{ sort keys %{$self->device_hash} };
     }
 
     sub discover {
