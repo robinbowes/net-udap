@@ -119,8 +119,6 @@ __PACKAGE__->mk_accessors( keys %field_default );
             croak('raw msg not set');
         };
 
-        print "\$raw_msg in MessageIn::udap_decode\n" . HexDump($raw_msg);
-
         # Initialise offset from start of raw string
         # This is incremented as we read characters from the string
         my $os = 0;
