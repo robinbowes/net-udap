@@ -33,7 +33,7 @@ use Exporter qw(import);
 
 %EXPORT_TAGS = (
     all => [
-        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip blocking local_addresses)
+        qw( hexstr decode_hex encode_mac decode_mac create_socket detect_local_ip blocking local_addresses ip_hash)
     ]
 );
 Exporter::export_tags('all');
@@ -166,16 +166,21 @@ use Socket;
         }
         my @output = qx/$syscmd/;
 
-        my %ips;
+        my @ips;
         for my $line (@output) {
             if ( $line =~ /$regex/ ) {
-                my $ip = $1;
-
-                # ignore loopback and zero addresses
-                $ips{$ip} = inet_aton($ip) unless grep {/$ip/} qw{'127.0.0.1' '0.0.0.0'};
+                push @ips, $1;
             }
         }
-        return \%ips;
+        return [@ips];
+    }
+
+    sub ip_hash {
+        my $ips = shift;
+        my %ip_hash = map { $_ => inet_aton($_) } @$ips; 
+        # ignore loopback and zero addresses
+        delete @ip_hash{'127.0.0.1', '0.0.0.0'};
+        return \%ip_hash;
     }
 
     sub detect_local_ip {

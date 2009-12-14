@@ -28,12 +28,61 @@ use version; our $VERSION = qv('1.0_01');
 
 use Carp;
 use Data::Dumper;
+use Getopt::Long;
+use Pod::Usage;
 use Net::UDAP::Shell;
 
 $| = 1;
 
-my $shell = Net::UDAP::Shell->new;
+my $opt = {};
+
+my $options_okay = GetOptions(
+
+    # store options in hash
+    $opt,
+
+    # Application-specific options
+    'local-address|a=s@',
+
+    # Standard meta-options
+    'help|?',
+    'man',
+
+) or pod2usage(0);
+
+pod2usage(1) if $opt->{help};
+pod2usage(-verbose => 2) if $opt->{man};
+
+my $shell = Net::UDAP::Shell->new(%$opt);
 $shell->cmdloop;
+
+__END__
+
+=head1 NAME
+
+    udap_shell.pl - Interactive UDAP shell
+
+=head1 SYNOPSIS
+
+    udap_shell.pl [options]
+
+    --local-address, -a   
+
+=head1 DESCRIPTION
+
+B<udap_shell.pl>
+
+Simple wrapper around Net::UDAP discovery libraries
+
+=over 4
+
+=item --local-address, -a
+
+send/listen on this local IP address
+
+=back
+
+=cut
 
 # vim:set softtabstop=4:
 # vim:set shiftwidth=4:

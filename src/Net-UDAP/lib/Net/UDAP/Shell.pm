@@ -84,7 +84,7 @@ sub init {
             close $fh or die "can't close history file $filename: $!\n";
         }
     }
-    $udap = Net::UDAP->new;
+    $udap = Net::UDAP->new(%args);
 }
 
 sub prompt_str {

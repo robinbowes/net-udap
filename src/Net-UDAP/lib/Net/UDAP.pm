@@ -57,6 +57,11 @@ __PACKAGE__->mk_accessors( keys %field_default );
     sub new {
         my ( $caller, %args ) = @_;
 
+        my $local_addresses = ip_hash(
+            exists $args{ 'local-address' }
+            ? $args{ 'local-address' }
+            : local_addresses );
+
         # values from $arg_ref over-write the defaults
         my %arg = ( %field_default, %args );
         my $class = ref $caller || $caller;
@@ -65,7 +70,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $self->socket(create_socket);
 
         # local_ips is a hash of local IP addresses
-        $self->local_ips(local_addresses);
+        $self->local_ips($local_addresses);
         return $self;
     }
 
@@ -85,10 +90,10 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
         # pass { advanced => 1 } to use advanced discovery
-        my $ucp_method
-            = ( $arg_ref->{advanced} )
-            ? UCP_METHOD_ADV_DISCOVER
-            : UCP_METHOD_DISCOVER;
+        my $ucp_method =
+          ( $arg_ref->{advanced} )
+          ? UCP_METHOD_ADV_DISCOVER
+          : UCP_METHOD_DISCOVER;
 
         # Empty the device list
         $self->device_hash( {} );
@@ -107,7 +112,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
         $arg_ref->{mac} = $mac
-            unless exists $arg_ref->{mac};
+          unless exists $arg_ref->{mac};
 
         if ( $self->send_msg( $mac, UCP_METHOD_GET_IP, $arg_ref ) ) {
             $self->read_responses;
@@ -120,7 +125,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
         $arg_ref->{mac} = $mac
-            unless exists $arg_ref->{mac};
+          unless exists $arg_ref->{mac};
 
         if ( $self->send_msg( $mac, UCP_METHOD_SET_IP, $arg_ref ) ) {
             $self->read_responses;
@@ -133,7 +138,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
         $arg_ref->{mac} = $mac
-            unless exists $arg_ref->{mac};
+          unless exists $arg_ref->{mac};
 
         if ( $self->send_msg( $mac, UCP_METHOD_GET_DATA, $arg_ref ) ) {
             $self->read_responses;
@@ -146,7 +151,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $arg_ref = {} unless ref($arg_ref) eq 'HASH';
 
         $arg_ref->{mac} = $mac
-            unless exists $arg_ref->{mac};
+          unless exists $arg_ref->{mac};
 
         if ( $self->send_msg( $mac, UCP_METHOD_SET_DATA, $arg_ref ) ) {
             $self->read_responses;
@@ -181,7 +186,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         }
         else {
             croak(
-                'Must specify mac address for $ucp_method_name->{$ucp_method} packets'
+'Must specify mac address for $ucp_method_name->{$ucp_method} packets'
             ) if !defined $mac;
             $encoded_mac = encode_mac($mac);
         }
@@ -196,20 +201,19 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $msg_args->{src_ip} = $arg_ref->{src_ip} if $arg_ref->{src_ip};
 
         my $msg_ref;
-        eval { $msg_ref = Net::UDAP::MessageOut->new($msg_args) }
-            or do {
+        eval { $msg_ref = Net::UDAP::MessageOut->new($msg_args) } or do {
             carp($@);
             return;
-            };
+        };
         my $sock = $self->socket;
         $sock->sockopt( SO_BROADCAST, 1 );
         my $dest_ip = inet_ntoa(INADDR_BROADCAST);
-        my $dest    = pack_sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
-        log(      info => '*** Broadcasting '
-                . $ucp_method_name->{$ucp_method}
-                . ' message to MAC address '
-                . decode_mac($encoded_mac)
-                . " on $dest_ip\n" );
+        my $dest = pack_sockaddr_in( PORT_UDAP, INADDR_BROADCAST );
+        log(    info => '*** Broadcasting '
+              . $ucp_method_name->{$ucp_method}
+              . ' message to MAC address '
+              . decode_mac($encoded_mac)
+              . " on $dest_ip\n" );
         return $sock->send( $msg_ref->packed, 0, $dest );
     }
 
@@ -234,8 +238,8 @@ __PACKAGE__->mk_accessors( keys %field_default );
         my $select = IO::Select->new( $self->socket );
 
         while ( $select->can_read(1) ) {
-            if ( my $clientpaddr
-                = $self->socket->recv( my $raw_msg, UDP_MAX_MSG_LEN ) )
+            if ( my $clientpaddr =
+                $self->socket->recv( my $raw_msg, UDP_MAX_MSG_LEN ) )
             {
 
                 $packet_received = 1;
@@ -246,7 +250,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
                 # Don't process packets we sent
                 if ( exists $self->local_ips->{$src_ip_a} ) {
-                    log(debug => '  Ignoring packet sent from this machine' );
+                    log( debug => '  Ignoring packet sent from this machine' );
                     next;
                 }
 
@@ -291,12 +295,12 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
         my $method  = $msg_ref->ucp_method;
         my $handler = $METHOD{$method}
-            || croak('ucp_method invalid or not defined.');
+          || croak('ucp_method invalid or not defined.');
 
         my $mac = decode_mac( $msg_ref->src_mac );
         log( info =>
-                "  $ucp_method_name->{$method} response received from $mac\n"
-        ) if $mac;
+              "  $ucp_method_name->{$method} response received from $mac\n" )
+          if $mac;
         return $handler->( $self, $msg_ref );
     }
 
@@ -353,15 +357,15 @@ __PACKAGE__->mk_accessors( keys %field_default );
     sub add_client {
         my ( $self, $msg_ref ) = @_;
         croak '$msg_ref not a Net::UDAP::MessageIn object'
-            unless ref($msg_ref) eq 'Net::UDAP::MessageIn';
+          unless ref($msg_ref) eq 'Net::UDAP::MessageIn';
 
         my $mac = decode_mac( $msg_ref->src_mac );
 
         if ($mac) {
             my $device_data_ref = $msg_ref->device_data_ref;
             $device_data_ref->{mac} = $mac;
-            $self->device_hash->{$mac}
-                = Net::UDAP::Client->new($device_data_ref);
+            $self->device_hash->{$mac} =
+              Net::UDAP::Client->new($device_data_ref);
         }
 
         #else {
@@ -373,13 +377,12 @@ __PACKAGE__->mk_accessors( keys %field_default );
     sub update_client {
         my ( $self, $msg_ref ) = @_;
         croak '$msg_ref not a Net::UDAP::MessageIn object'
-            unless ref($msg_ref) eq 'Net::UDAP::MessageIn';
+          unless ref($msg_ref) eq 'Net::UDAP::MessageIn';
 
         my $mac = decode_mac( $msg_ref->src_mac );
 
         if ($mac) {
-            $self->device_hash->{$mac}
-                ->update( $msg_ref->device_data_ref );
+            $self->device_hash->{$mac}->update( $msg_ref->device_data_ref );
         }
 
         #else {
