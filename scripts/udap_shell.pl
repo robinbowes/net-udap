@@ -29,8 +29,8 @@ use version; our $VERSION = qv('1.0_01');
 use Carp;
 use Data::Dumper;
 use Getopt::Long;
-use Pod::Usage;
 use Net::UDAP::Shell;
+use Pod::Usage;
 
 $| = 1;
 
