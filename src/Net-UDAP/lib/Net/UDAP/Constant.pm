@@ -219,7 +219,7 @@ my @device_data = (
 	sub { pack( 'C', shift ) }, sub { unpack( 'C', shift ) },
 	'interface',
 	undef,
-	'0 - wireless, 1 - wired',
+	'0 - wireless, 1 - wired (is set to 128 after factory reset)',
 	52, 1,
 	sub { pack( 'C', shift ) }, sub { unpack( 'C', shift ) },
 	'primary_dns',
