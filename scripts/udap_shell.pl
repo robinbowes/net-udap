@@ -28,8 +28,8 @@ use version; our $VERSION = qv('1.0_01');
 
 use Carp;
 use Data::Dumper;
-use Net::UDAP::Shell;
 use Net::UDAP::Log;
+use Net::UDAP::Shell;
 
 $| = 1;
 
