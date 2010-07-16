@@ -193,7 +193,7 @@ sub run_set {
     }
 
     foreach my $arg (@args) {
-        my ( $param, $value ) = split /=/, $arg;
+        my ( $param, $value ) = split /=/, $arg, 2;
         if ( ( !defined $param ) or ( !defined $value ) ) {
             print "Syntax error in set command\n";
             return;
