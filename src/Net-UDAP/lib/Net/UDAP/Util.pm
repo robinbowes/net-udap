@@ -156,12 +156,14 @@ use Socket;
             $syscmd = 'ipconfig';
             $regex  = qr{IP Address.* ((?:\d{1,3}\.){3}\d{1,3})};
         }
-        elsif ( $^O =~ /solaris/ ) {
-            $syscmd = '/usr/sbin/ifconfig -a4';
+        # slightly different command args and output under solaris + OSX
+        elsif ( $^O =~ /solaris|darwin/ ) {
+            $syscmd = 'LANG=C /usr/sbin/ifconfig -a';
             $regex  = qr{^\s+inet ((?:\d{1,3}\.){3}\d{1,3})};
         }
+        # default command should work on most/all linux
         else {
-            $syscmd = '/sbin/ifconfig';
+            $syscmd = 'LANG=C /sbin/ifconfig';
             $regex  = qr{inet addr:((?:\d{1,3}\.){3}\d{1,3})};
         }
         my @output = qx/$syscmd/;
