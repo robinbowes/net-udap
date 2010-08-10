@@ -57,10 +57,13 @@ __PACKAGE__->mk_accessors( keys %field_default );
     sub new {
         my ( $caller, %args ) = @_;
 
-        my $local_addresses = ip_hash(
-            exists $args{ 'local-address' }
-            ? $args{ 'local-address' }
-            : local_addresses );
+        my $local_addresses =
+          exists $args{'local-address'}
+          ? $args{'local-address'}
+          : local_addresses;
+
+        log( debug => '    IP addresses found: ' . join(',', @$local_addresses );
+        croak 'Local IP address not specified' unless @$local_addresses;
 
         # values from $arg_ref over-write the defaults
         my %arg = ( %field_default, %args );
@@ -70,7 +73,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
         $self->socket(create_socket);
 
         # local_ips is a hash of local IP addresses
-        $self->local_ips($local_addresses);
+        $self->local_ips( ip_hash($local_addresses) );
         return $self;
     }
 
