@@ -62,7 +62,7 @@ __PACKAGE__->mk_accessors( keys %field_default );
           ? $args{'local-address'}
           : local_addresses;
 
-        log( debug => '    IP addresses found: ' . join(',', @$local_addresses );
+        log( debug => '    IP addresses found: ' . join(',', @$local_addresses ) );
         croak 'Local IP address not specified' unless @$local_addresses;
 
         # values from $arg_ref over-write the defaults
