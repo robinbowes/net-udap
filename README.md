@@ -14,7 +14,7 @@ Net-UDAP is free software - you do not have to pay to use it.
 
 However, if you find Net-UDAP useful, you might like to make a donation - I've got ~~four~~ five kids to support!
 
-https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=V32L8P6YHMS7C
+https://paypal.me/RobinBowes
 
 ## Support
 
