@@ -45,7 +45,7 @@ use Exporter qw(import);
         qw( UCP_CODE_ZERO UCP_CODE_ONE UCP_CODE_DEVICE_NAME UCP_CODE_DEVICE_TYPE UCP_CODE_USE_DHCP UCP_CODE_IP_ADDR UCP_CODE_SUBNET_MASK UCP_CODE_GATEWAY_ADDR UCP_CODE_EIGHT UCP_CODE_FIRMWARE_REV UCP_CODE_HARDWARE_REV UCP_CODE_DEVICE_ID UCP_CODE_DEVICE_STATUS UCP_CODE_UUID )
     ],
     UCP_METHODS => [
-        qw( UCP_METHOD_ZERO UCP_METHOD_DISCOVER UCP_METHOD_GET_IP UCP_METHOD_SET_IP UCP_METHOD_RESET UCP_METHOD_GET_DATA UCP_METHOD_SET_DATA UCP_METHOD_ERROR UCP_METHOD_CREDENTIALS_ERROR UCP_METHOD_ADV_DISCOVER UCP_METHOD_TEN )
+        qw( UCP_METHOD_ZERO UCP_METHOD_DISCOVER UCP_METHOD_GET_IP UCP_METHOD_SET_IP UCP_METHOD_RESET UCP_METHOD_GET_DATA UCP_METHOD_SET_DATA UCP_METHOD_ERROR UCP_METHOD_CREDENTIALS_ERROR UCP_METHOD_ADV_DISCOVER UCP_METHOD_TEN UCP_METHOD_GET_UUID)
     ],
     WLAN_MODES       => [qw( WLAN_MODE_INFRASTRUCTURE WLAN_MODE_ADHOC )],
     WLAN_REGIONS_ATH => [
@@ -444,8 +444,8 @@ This document describes Net::UDAP::Constant version 0.0.1
     Brief code example(s) here showing commonest usage(s).
     This section will be as far as many users bother reading
     so make it as educational and exeplary as possible.
-  
-  
+
+
 =head1 DESCRIPTION
 
 =for author to fill in:
@@ -453,7 +453,7 @@ This document describes Net::UDAP::Constant version 0.0.1
     Use subsections (=head2, =head3) as appropriate.
 
 
-=head1 INTERFACE 
+=head1 INTERFACE
 
 =for author to fill in:
     Write a separate section listing the public components of the modules
@@ -493,7 +493,7 @@ This document describes Net::UDAP::Constant version 0.0.1
     files, and the meaning of any environment variables or properties
     that can be set. These descriptions must also include details of any
     configuration language used.
-  
+
 Net::UDAP::Constant requires no configuration files or environment variables.
 
 
