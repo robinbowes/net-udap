@@ -44,20 +44,20 @@ use Carp;
     @severity{@levels} = 1 .. @levels;
 
     sub log {
-	my( $level, $msg) = @_;
+        my( $level, $msg) = @_;
 
         # A wrapper round the log4perl semantics to make logging easier
-	# Bonus points, it makes changing logging systems way easier
-	# when it's wrapped, as I've now done
-    	if( $level eq 'info' ){
+        # Bonus points, it makes changing logging systems way easier
+        # when it's wrapped, as I've now done
+        if( $level eq 'info' ){
             INFO $msg;
-	} elsif( $level eq 'debug' ){
-	    DEBUG $msg;
-	} elsif( $level eq 'warn' ){
-	    WARN $msg;
-	} elsif( $level eq 'error' ){
-	    ERROR $msg;
-	}
+        } elsif( $level eq 'debug' ){
+            DEBUG $msg;
+        } elsif( $level eq 'warn' ){
+            WARN $msg;
+        } elsif( $level eq 'error' ){
+            ERROR $msg;
+        }
     }
 }
 1;    # Magic true value required at end of module
