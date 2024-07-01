@@ -20,7 +20,7 @@ package Net::UDAP::Log;
 use strict;
 use warnings;
 
-use version; our $VERSION = qv('1.0_01');
+use version; our $VERSION = qv('1.0_02');
 
 use vars qw(@ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $VERSION);
 
@@ -32,11 +32,14 @@ Exporter::export_tags('all');
 our $default_log_level;
 BEGIN { $default_log_level = 'info' }
 
-use Log::StdLog {
-    handle => *STDERR,
-    level  => $default_log_level,
-    format => \&std_log_format,
-};
+#use Log::StdLog {
+#    handle => *STDERR,
+#    level  => $default_log_level,
+#    format => \&std_log_format,
+#};
+
+use Log::Log4perl qw(:easy);
+Log::Log4perl->easy_init($INFO);
 
 use Carp;
 
@@ -47,32 +50,21 @@ use Carp;
     @severity{@levels} = 1 .. @levels;
 
     sub log {
+	my( $level, $msg) = @_;
 
-        # A wrapper round the Log::StdLog semantics to make logging easier
-        # Also, avoids the need to use the complex use statement in
-        # all code requiring logging
-        print {*STDLOG} (@_);
+        # A wrapper round the log4perl semantics to make logging easier
+	# Bonus points, it makes changing logging systems way easier
+	# when it's wrapped, as I've now done
+    	if( $level eq 'info' ){
+            INFO $msg;
+	} elsif( $level eq 'debug' ){
+	    DEBUG $msg;
+	} elsif( $level eq 'warn' ){
+	    WARN $msg;
+	} elsif( $level eq 'error' ){
+	    ERROR $msg;
+	}
     }
-
-    sub set_min_log_level {
-        my $new_log_level = shift || $default_log_level;
-        if ( !exists $severity{$new_log_level} ) {
-            carp
-                "log level '$new_log_level' not recognised. Setting min log level to '$default_log_level'";
-            $new_log_level = $default_log_level;
-        }
-        my $ref = tied *STDLOG;
-        $ref->{min_severity}      = $severity{$new_log_level};
-        $ref->{min_severity_name} = $new_log_level;
-    }
-
-    sub std_log_format {
-
-        # a subroutine that Log::StdLog will use  to format log msgs
-        my ( $date, $pid, $level, @message ) = @_;
-        return "$level: " . join( q{}, @message );
-    }
-
 }
 1;    # Magic true value required at end of module
 __END__
