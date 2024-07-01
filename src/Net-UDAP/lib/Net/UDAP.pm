@@ -328,13 +328,13 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
     sub callback_set_ip {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '>>> processing set_ip packet' );
+        log( debug => '>>> received set_ip packet (NOOP)' );
         return;
     }
 
     sub callback_reset {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '>>> processing reset packet' );
+        log( debug => '>>> received reset packet (NOOP)' );
         return;
     }
 
@@ -346,25 +346,25 @@ __PACKAGE__->mk_accessors( keys %field_default );
 
     sub callback_set_data {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '>>> processing set_data packet' );
+        log( debug => '>>> received set_data packet (NOOP)' );
         return;
     }
 
     sub callback_error {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '>>> processing error packet' );
+        log( debug => '>>> received error packet (NOOP)' );
         return;
     }
 
     sub callback_credentials_error {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '>>> processing credentials_error packet' );
+        log( debug => '>>> received credentials_error packet (NOOP)' );
         return;
     }
 
     sub callback_get_uuid {
         my ( $self, $msg_ref ) = @_;
-        log( debug => '>>> processing get_uuid packet' );
+        log( debug => '>>> received get_uuid packet (NOOP)' );
         return;
     }
 
