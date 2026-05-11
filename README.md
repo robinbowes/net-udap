@@ -1,5 +1,13 @@
 # Net-UDAP
 
+> ## ⚠️ This project is archived
+>
+> **Net-UDAP has been superseded by [yo61/go-udap](https://github.com/yo61/go-udap)**, a Go reimplementation. Please use that project for any new work; this repository is kept online for historical reference only and will not receive further updates.
+>
+> Net-UDAP started in January 2008 as a way to configure the Logitech SqueezeBox Receiver without needing a SqueezeBox Controller. Working with the Squeezebox community over the years that followed was hugely formative for me — the conversations on the Slim Devices forums, the collaboration with other developers, and the encouragement from users all played a real part in shaping my career as a developer. Thank you to everyone who used it, contributed, filed bugs, or just hung around the forums. It meant a lot then, and it still does.
+>
+> — Robin
+
 ## Overview
 
 Net::UDAP is a Perl module to configure the Logitech SqueezeBox Receiver (SBR) from a PC, i.e. without requiring a SqueezeBox Controller (SBC).
